@@ -88,7 +88,7 @@ class cal_HansonKraus1991(object):
                                          self.Y0,
                                          self.phi,
                                          self.bctype)
-                return Ymd[self.idx_obs_splited]
+                return Ymd[self.idx_obs_splited, :]
             
             self.params = [
                 Uniform('K', 1e-4, 2)
@@ -112,7 +112,7 @@ class cal_HansonKraus1991(object):
                                          self.Y0,
                                          self.phi,
                                          self.bctype)
-                return Ymd[self.idx_obs_splited]
+                return Ymd[self.idx_obs_splited, :]
             
             self.params = list()
             for i in range(len(self.X0)):
