@@ -129,13 +129,13 @@ class cal_HansonKraus1991(object):
 
         idx = np.where((self.time >= self.start_date) & (self.time <= self.end_date))
         self.idx_calibration = idx
-        self.Hs_splited = self.Hs[:,idx]
-        self.Tp_splited = self.Tp[:,idx]
-        self.Dir_splited = self.Dir[:,idx]
+        self.Hs_splited = self.Hs[idx,:]
+        self.Tp_splited = self.Tp[idx,:]
+        self.Dir_splited = self.Dir[idx,:]
         self.time_splited = self.time[idx]
 
         idx = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))
-        self.Obs_splited = self.Obs[:,idx]
+        self.Obs_splited = self.Obs[idx,:]
         self.time_obs_splited = self.time_obs[idx]
 
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time_splited - t)))
