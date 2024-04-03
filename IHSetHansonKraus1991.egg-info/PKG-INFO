@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: IHSetHansonKraus1991
-Version: 0.0.2
+Version: 0.0.3
 Summary: IH-SET Hanson and Kraus (1991)
 Home-page: https://github.com/defreitasL/IHSetHansonKraus1991
 Author: Lucas de Freitas Pereira
@@ -20,4 +20,4 @@ Requires-Dist: numba
 Requires-Dist: datetime
 Requires-Dist: spotpy
 Requires-Dist: IHSetCalibration@ git+https://github.com/defreitasL/IHSetCalibration.git
-Requires-Dist: IHSetCalibration@ git+https://github.com/IHCantabria/IHSetUtils.git
+Requires-Dist: IHSetUtils@ git+https://github.com/IHCantabria/IHSetUtils.git
