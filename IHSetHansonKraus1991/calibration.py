@@ -42,8 +42,6 @@ class cal_HansonKraus1991(object):
             self.repetitions = cfg['repetitions'].values
             self.cal_obj = objective_functions(self.cal_alg, self.metrics, repetitions=self.repetitions)
 
-        if self.switch_vlt == 0:
-            self.vlt = cfg['vlt'].values
 
         self.Y0 = trs['Y0'].values
         self.X0 = trs['X0'].values
@@ -70,6 +68,7 @@ class cal_HansonKraus1991(object):
         cfg.close()
         wav.close()
         ens.close()
+        trs.close()
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time - t)))
         self.idx_obs = mkIdx(self.time_obs)
 
