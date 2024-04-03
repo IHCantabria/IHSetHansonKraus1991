@@ -4,6 +4,7 @@ setup.py
 IHSetHansonKraus1991/HansonKraus1991.py
 IHSetHansonKraus1991/__init__.py
 IHSetHansonKraus1991/calibration.py
+IHSetHansonKraus1991/transects.py
 IHSetHansonKraus1991.egg-info/PKG-INFO
 IHSetHansonKraus1991.egg-info/SOURCES.txt
 IHSetHansonKraus1991.egg-info/dependency_links.txt
