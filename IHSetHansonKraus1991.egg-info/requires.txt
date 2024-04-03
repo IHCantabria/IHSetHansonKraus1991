@@ -3,5 +3,5 @@ xarray
 numba
 datetime
 spotpy
-IHSetCalibration@ git+https://github.com/defreitasL/IHSetHansonKraus1991.git
+IHSetCalibration@ git+https://github.com/defreitasL/IHSetCalibration.git
 IHSetCalibration@ git+https://github.com/IHCantabria/IHSetUtils.git

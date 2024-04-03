@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='IHSetHansonKraus1991',
-    version='0.0.1',
+    version='0.0.2',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -11,7 +11,7 @@ setup(
         'numba',
         'datetime',
         'spotpy',
-        'IHSetCalibration @ git+https://github.com/defreitasL/IHSetHansonKraus1991.git',
+        'IHSetCalibration @ git+https://github.com/defreitasL/IHSetCalibration.git',
         'IHSetCalibration @ git+https://github.com/IHCantabria/IHSetUtils.git'
     ],
     author='Lucas de Freitas Pereira',
