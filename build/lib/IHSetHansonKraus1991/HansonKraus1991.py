@@ -1,10 +1,11 @@
 import numpy as np
 from numba import jit
-from datetime import datetime
-from IHSetUtils import nauticalDir2cartesianDir, abs_pos, shore_angle, BreakingPropagation_1L, ALST
+from IHSetUtils.libjit.geometry import nauticalDir2cartesianDir, abs_pos, shore_angle
+from IHSetUtils.libjit.waves import BreakingPropagation
+from IHSetUtils.libjit.morfology import ALST
 
 @jit
-def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctype):
+def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
     """
     Function OneLine calculates the evolution of a system over time using a numerical method.
 
@@ -28,56 +29,51 @@ def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctyp
         q (ndarray): Matrix representing some quantity.
     """
     
-    nti = hs.shape[1]
-    tii = 2
+    nti = hs.shape[0]
+    # tii = 1
     desl = 1
 
     n1 = len(X0)
-    n2, mt = tp.shape
+    mt, n2 = tp.shape
 
-    ysol = np.zeros((n1, mt))
-    ysol[:, 0] = yi
+    ysol = np.zeros((mt, n1))
+    ysol[0, :] = yi
 
-    hb = np.zeros((n2, mt))
-    dirb = np.zeros((n2, mt))
-    depthb = np.zeros((n2, mt))
-    q = np.zeros((n2, mt))
-    q0 = np.zeros((n2, mt))
+    hb = np.zeros((mt, n2))
+    dirb = np.zeros((mt, n2))
+    depthb = np.zeros((mt, n2))
+    q = np.zeros((mt, n2))
+    q0 = np.zeros((mt, n2))
 
-    time_init = datetime.now()
-    for pos in range(1, nti-1):
-
+    # time_init = datetime.now()
+    for pos in range(0, nti-1):
+        
         ti = pos+desl
 
-        p1 = ti - desl
-        p2 = ti + desl
+        # p1 = ti - desl
+        # p2 = ti + desl
 
-        ynew, hb[:, ti], dirb[:, ti], depthb[:, ti], q[:, ti], q0[:, ti] = \
-            ydir_L(ysol[:, ti-1], dt, dx, tii, hs[:, p1:p2], tp[:, p1:p2], dir[:, p1:p2], depth, \
-                   hb[:, p1:p2], dirb[:, p1:p2], depthb[:, p1:p2], q[:, p1:p2], doc[:, p1:p2], kal, X0, Y0, phi, bctype)
+        ysol[ti,:], hb[ti,:], dirb[ti,:], depthb[ti,:], q[ti,:], q0[ti,:] =  ydir_L(ysol[ti-1, :], dt, dx, hs[ti, :], tp[ti, :], dir[ti, :], depth, doc[ti, :], kal, X0, Y0, phi, bctype, Bcoef)
 
-        ysol[:, ti] = ynew
 
-        p1 += 1
-        p2 += 1
+        # if pos % 1000 == 0:
+            # elp_t = (datetime.now() - time_init).total_seconds()
+            # print("Progress of %.2f %% - " % (pos/(nti-1) * 100), end="")
+    #         if pos > 0:
+    #             print("Average time per step: %.2f [ms] - " % (elp_t/pos), end="")
+    #             print("Estimated time to finish: %.2f [s] - " % ((elp_t/pos)*(nti-2-pos)), end="")
+    #             print("Elapsed time: %.2f [s]" % (elp_t))
 
-        if pos % 1000 == 0:
-            elp_t = (datetime.now() - time_init).total_seconds() * 1000
-            print("\n Progress of %.2f %% - " % (pos/(nti-1) * 100), end="")
-            print("Average time per step: %.2f [ms] - " % (elp_t/pos), end="")
-            print("Estimated time to finish: %.2f [s] - " % ((elp_t/1000/pos)*(nti-2-pos)), end="")
-            print("Elapsed time: %.2f [s]" % (elp_t/1000))
-
-    print("\n***************************************************************")
-    print("End of simulation")
-    print("***************************************************************")
-    print("\nElapsed simulation time: %.2f seconds \n" % ((datetime.now() - time_init).total_seconds() * 1000))
-    print("***************************************************************")
+    # print("\n***************************************************************")
+    # print("End of simulation")
+    # print("***************************************************************")
+    # print("\nElapsed simulation time: %.2f seconds \n" % ((datetime.now() - time_init).total_seconds()))
+    # print("***************************************************************")
 
     return ysol, q
 
 @jit
-def ydir_L(y, dt, dx, ti, hs, tp, dire, depth, hb, dirb, depthb, q, doc, kal, X0, Y0, phi, bctype):
+def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
     """
     Function ydir_L calculates the propagation of waves and other quantities at a specific time step.
 
@@ -110,34 +106,45 @@ def ydir_L(y, dt, dx, ti, hs, tp, dire, depth, hb, dirb, depthb, q, doc, kal, X0
         - q (ndarray): Updated quantity matrix.
         - q0 (ndarray): Updated quantity.
     """
+    # flag_dig = False
+
     XN, YN = abs_pos(X0, Y0, nauticalDir2cartesianDir(phi) * np.pi / 180.0, y)
 
-    alfas = np.zeros(hs.shape[0])
-    alfas[1:-1] = shore_angle(XN, YN, dire[:, ti])
+    alfas = np.zeros_like(hs)
+    alfas[1:-1] = shore_angle(XN, YN, dire)
     alfas[0] = alfas[1]
     alfas[-1] = alfas[-2]
 
-    try:
-        hb[:, ti], dirb[:, ti], depthb[:, ti] = BreakingPropagation_1L(hs[:, ti], tp[:, ti], dire[:, ti], depth, alfas + 90, "spectral")
-    except Exception as e:
-        print("Waves diverged -- Q_tot = 0")
-        print(e)
+    # try:
+    hb, dirb, depthb = BreakingPropagation(hs, tp, dire, depth, alfas + 90, Bcoef)
+    # except:
+    #     flag_dig = True
+    #     print("Waves diverged -- Q_tot = 0")
+    #     hb = np.zeros_like(hs) + 0.01
+    #     dirb = np.zeros_like(dire) + alfas + 90
+    #     depthb = np.zeros_like(depth) + 0.01
+        
+    dc = 0.5 * (doc[1:] + doc[:-1])
 
-    dc = 0.5 * (doc[1:, ti-1:ti+2] + doc[:-1, ti-1:ti+2])
-
-    q[:, ti], q0 = ALST(hb[:, ti], tp[:, ti], dirb[:, ti], depthb[:, ti], alfas + 90, kal)
+    # if flag_dig:
+    #     q_now = np.zeros_like(hs)
+    #     q0 = np.zeros_like(hs)
+    # else:
+    q_now, q0 = ALST(hb, dirb, depthb, alfas + 90, kal)
 
     if bctype == "Dirichlet":
-        q[0, ti] = 0
-        q[-1, ti] = 0
+        q_now[0] = 0
+        q_now[-1] = 0
     elif bctype == "Neumann":
-        q[0, ti] = q[1, ti]
-        q[-1, ti] = q[-2, ti]
+        q_now[0] = q_now[1]
+        q_now[-1] = q_now[-2]
 
-    if (dx**2 * np.min(dc) / (4 * np.max(q0))) < dt:
-        print("WARNING: COURANT CONDITION VIOLATED")
+    try:
+        if (dx**2 * np.min(dc) / (4 * np.max(q0))) < dt:
+            print("WARNING: COURANT CONDITION VIOLATED")
+    except:
+        pass
 
-    ynew = y - (dt * 60 * 60) / dc[:, 1] * (q[1:, ti] - q[:-1, ti]) / dx
+    ynew = y - (dt * 60 * 60) / dc * (q_now[1:] - q_now[:-1]) / dx
 
-    return ynew, hb[:, ti], dirb[:, ti], depthb[:, ti], q[:, ti], q0
-
+    return ynew, hb, dirb, depthb, q_now, q0
