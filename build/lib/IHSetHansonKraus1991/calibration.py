@@ -28,10 +28,16 @@ class cal_HansonKraus1991(object):
 
         self.cal_alg = cfg['cal_alg'].values
         self.metrics = cfg['metrics'].values
-        self.dt = cfg['dt'].values
-        self.dx = cfg['dx'].values
-        self.bctype = cfg['bctype'].values
+        self.dt = float(cfg['dt'].values)
+        self.dx = float(cfg['dx'].values)
+        self.bctype = str(cfg['bctype'].values)
         self.switch_Kal = cfg['switch_Kal'].values
+        self.breakType = cfg['breakType'].values
+
+        if self.breakType == 'Spectral':
+            self.Bcoef = 0.45
+        elif self.breakType == 'Monochromatic':
+            self.Bcoef = 0.78
 
         if self.cal_alg == 'NSGAII':
             self.n_pop = cfg['n_pop'].values
@@ -43,21 +49,21 @@ class cal_HansonKraus1991(object):
             self.cal_obj = objective_functions(self.cal_alg, self.metrics, repetitions=self.repetitions)
 
 
-        self.Y0 = trs['Y0'].values
-        self.X0 = trs['X0'].values
-        self.Xf = trs['Xf'].values
-        self.Yf = trs['Yf'].values
-        self.phi = trs['phi'].values
-        self.yi = trs['yi'].values
+        self.Y0 = np.array(trs['Y0'].values).squeeze()
+        self.X0 = np.array(trs['X0'].values).squeeze()
+        self.Xf = np.array(trs['Xf'].values).squeeze()
+        self.Yf = np.array(trs['Yf'].values).squeeze()
+        self.phi = np.array(trs['phi'].values).squeeze()
+        self.yi = np.array(trs['yi'].values).squeeze()
 
-        self.Hs = wav['Hs'].values
-        self.Tp = wav['Tp'].values
-        self.Dir = wav['Dir'].values
-        self.depth = wav['depth'].values
-        self.doc = wav['doc'].values
+        self.Hs = np.array(wav['Hs'].values).squeeze()
+        self.Tp = np.array(wav['Tp'].values).squeeze()
+        self.Dir = np.array(wav['Dir'].values).squeeze()
+        self.depth = np.array(wav['depth'].values).squeeze()
+        self.doc = np.array(wav['doc'].values).squeeze()
         self.time = mkTime(wav['Y'].values, wav['M'].values, wav['D'].values, wav['h'].values)
 
-        self.Obs = ens['Obs'].values
+        self.Obs = np.array(ens['Obs'].values).squeeze()
         self.time_obs = mkTime(ens['Y'].values, ens['M'].values, ens['D'].values, ens['h'].values)
 
         self.start_date = datetime(int(cfg['Ysi'].values), int(cfg['Msi'].values), int(cfg['Dsi'].values))
@@ -87,8 +93,9 @@ class cal_HansonKraus1991(object):
                                          self.X0,
                                          self.Y0,
                                          self.phi,
-                                         self.bctype)
-                return Ymd[self.idx_obs_splited, :]
+                                         self.bctype,
+                                         self.Bcoef)
+                return Ymd[self.idx_obs_splited, :].flatten()
             
             self.params = [
                 Uniform('K', 1e-4, 2)
@@ -111,8 +118,9 @@ class cal_HansonKraus1991(object):
                                          self.X0,
                                          self.Y0,
                                          self.phi,
-                                         self.bctype)
-                return Ymd[self.idx_obs_splited, :]
+                                         self.bctype,
+                                         self.Bcoef)
+                return Ymd[self.idx_obs_splited, :].flatten()
             
             self.params = list()
             for i in range(len(self.X0)):
@@ -129,26 +137,21 @@ class cal_HansonKraus1991(object):
 
         idx = np.where((self.time >= self.start_date) & (self.time <= self.end_date))
         self.idx_calibration = idx
-        self.Hs_splited = self.Hs[idx,:]
-        self.Tp_splited = self.Tp[idx,:]
-        self.Dir_splited = self.Dir[idx,:]
+        self.Hs_splited = self.Hs[idx]
+        self.Tp_splited = self.Tp[idx]
+        self.Dir_splited = self.Dir[idx]
         self.time_splited = self.time[idx]
 
         idx = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))
-        self.Obs_splited = self.Obs[idx,:]
+        self.Obs_splited = self.Obs[idx]
         self.time_obs_splited = self.time_obs[idx]
 
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time_splited - t)))
         self.idx_obs_splited = mkIdx(self.time_obs_splited)
-        self.observations = self.Obs_splited
+        self.observations = self.Obs_splited.flatten()
 
         # Validation
         idx = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))
         self.idx_validation_obs = idx
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time[self.idx_validation] - t)))
         self.idx_validation_for_obs = mkIdx(self.time_obs[idx])
-
-
-        
-
-
