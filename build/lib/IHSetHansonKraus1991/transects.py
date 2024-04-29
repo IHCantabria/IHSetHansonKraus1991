@@ -5,14 +5,19 @@ import scipy.interpolate as spi
 from numba import jit
 import scipy.optimize as so
 import matplotlib.pyplot as plt
-from IHSetUtils import depthOfClosure, Hs12Calc
+from IHSetUtils import depthOfClosure, Hs12Calc, ADEAN, wast
 
 class shoreline:
     def __init__(self, shores, timeShores, **kwargs):
 
         #store data
         self.shores = shores
-        self.shoresTime = timeShores
+        self.timeShores = timeShores
+        
+        self.epsg = kwargs['epsg']
+        self.corners = kwargs['corners']
+        self.rounder = kwargs['rounder']
+        self.server = kwargs['server']
         try:
             interpN = kwargs['interpN']
         except:
@@ -49,63 +54,104 @@ class shoreline:
         auxX = np.zeros((self.N, len(self.shorelines)))
         auxY = np.zeros((self.N, len(self.shorelines)))
 
-        for key, i in zip(self.shorelines.keys(), range(self.N)):
+        for key in self.shorelines.keys():
+            i = int(key) - 1
             auxX[:,i] = self.shorelines[key]['x']
             auxY[:,i] = self.shorelines[key]['y']
 
 
         self.ts = getTimeseries(auxX, auxY,
+                                self.trs.xi, self.trs.yi,
+                                self.trs.xf, self.trs.yf)
+        self.ts05 = getTimeseries(auxX, auxY,
                                 self.trs.xi05, self.trs.yi05,
                                 self.trs.xf05, self.trs.yf05)
         
-    def setProfiles(self, xx, yy, zz, minDepth):
-        
-        prof = getProfiles(self.trs.xi, self.trs.yi, self.trs.xf, self.trs.yf, xx, yy , zz)
-        # prof05 = getProfiles(self.trs.xi05, self.trs.yi05, self.trs.xf05, self.trs.yf05, xx, yy , zz)
+    def setProfiles(self, mode, **kwargs):
 
-        self.profiles = {}
-        for i in range(len(self.trs.xi)):
-            jj = prof[i,:,2] < minDepth
-            ii = np.isnan(prof[i,:,2])
-            self.profiles[str(i+1)] = prof[i,(~ii & jj),:]
+        self.profMode = mode
         
-        self.aDean = deanProfiler(self.profiles)
+        if mode == 'bathy':
+            prof = getProfiles(self.trs.xi, self.trs.yi, self.trs.xf, self.trs.yf, kwargs['xx'], kwargs['yy'] , kwargs['zz'])
+            # prof05 = getProfiles(self.trs.xi05, self.trs.yi05, self.trs.xf05, self.trs.yf05, xx, yy , zz)
 
-        prof05 = getProfiles(self.trs.xi05, self.trs.yi05, self.trs.xf05, self.trs.yf05, xx, yy , zz)
-        # prof05 = getProfiles(self.trs.xi05, self.trs.yi05, self.trs.xf05, self.trs.yf05, xx, yy , zz)
+            self.profiles = {}
+            for i in range(len(self.trs.xi)):
+                jj = prof[i,:,2] < kwargs['minDepth']
+                ii = np.isnan(prof[i,:,2])
+                self.profiles[str(i+1)] = prof[i,(~ii & jj),:]        
+            self.aDean = deanProfiler(self.profiles)
 
-        self.profiles05 = {}
-        for i in range(len(self.trs.xi05)):
-            jj = prof05[i,:,2] < minDepth
-            ii = np.isnan(prof05[i,:,2])
-            self.profiles05[str(i+1)] = prof05[i,(~ii & jj),:]
-        
-        self.aDean05 = deanProfiler(self.profiles05)
+            prof05 = getProfiles(self.trs.xi05, self.trs.yi05, self.trs.xf05, self.trs.yf05, kwargs['xx'], kwargs['yy'] , kwargs['zz'])
+            # prof05 = getProfiles(self.trs.xi05, self.trs.yi05, self.trs.xf05, self.trs.yf05, xx, yy , zz)
+
+            self.profiles05 = {}
+            for i in range(len(self.trs.xi05)):
+                jj = prof05[i,:,2] < kwargs['minDepth']
+                ii = np.isnan(prof05[i,:,2])
+                self.profiles05[str(i+1)] = prof05[i,(~ii & jj),:]
+            
+            self.aDean05 = deanProfiler(self.profiles05)
+        elif mode == 'D50':
+
+            self.aDean = np.zeros_like(self.trs.xi) + ADEAN(kwargs['D50'])
+            self.aDean05 = np.zeros_like(self.trs.xi05) + ADEAN(kwargs['D50'])
+
+            self.profiles = {}
+            for i in range(len(self.trs.xi)):
+                dist_i = self.ts[0,i]
+                dist_f = wast(kwargs['minDepth'], kwargs['D50'])
+                dist = np.linspace(dist_i, dist_i+dist_f, 100)
+                xi , xf = self.trs.xi[i], self.trs.xi[i] + np.cos(np.deg2rad(self.trs.phi[i])) * dist
+                yi, yf = self.trs.yi[i], self.trs.yi[i] + np.sin(np.deg2rad(self.trs.phi[i])) * dist
+                yi , yf = self.trs.yi[i], self.trs.yi[i] + np.sin(self.trs.phi[i]) * dist
+                x = np.linspace(xi, xf, 100)
+                y = np.linspace(yi, yf, 100)
+                z = deanProfile(self.aDean[i], np.linspace(0.0001, dist_f, 100))
+                self.profiles[str(i+1)] = np.column_stack((x, y, z, dist))
+                
+            self.profiles05 = {}
+            for i in range(len(self.trs.xi05)):
+                dist_i = self.ts05[0,i]
+                dist_f = wast(kwargs['minDepth'], kwargs['D50'])
+                dist = np.linspace(dist_i, dist_i+dist_f, 100)
+                xi , xf = self.trs.xi05[i], self.trs.xi05[i] + np.cos(np.deg2rad(self.trs.phi05[i])) * dist
+                yi, yf = self.trs.yi05[i], self.trs.yi05[i] + np.sin(np.deg2rad(self.trs.phi05[i])) * dist
+                yi , yf = self.trs.yi05[i], self.trs.yi05[i] + np.sin(self.trs.phi05[i]) * dist
+                x = np.linspace(xi, xf, 100)
+                y = np.linspace(yi, yf, 100)
+                z = deanProfile(self.aDean05[i], np.linspace(0.0001, dist_f, 100))
+                self.profiles05[str(i+1)] = np.column_stack((x, y, z, dist))
+
+
+
+
 
     def interpClimate(self, wavec):
 
         prof = np.zeros((len(self.profiles), 2))
         for i, key in zip(range(len(self.profiles)),self.profiles.keys()):
 
-            if self.refline.flagSea == 1:
-                prof[i, 0] = self.profiles[key][0,0]
-                prof[i, 1] = self.profiles[key][0,1]
-            elif self.refline.flagSea == -1:
-                prof[i, 0] = self.profiles[key][-1,0]
-                prof[i, 1] = self.profiles[key][-1,1]
+                ii = np.argmax(np.abs(self.profiles[key][:,2]))
+                prof[i, 0] = self.profiles[key][ii,0]
+                prof[i, 1] = self.profiles[key][ii,1]
+
+
 
         self.waves = interpWaves(prof[:,0],
                                  prof[:,1],
-                                 wavec.x.values,
-                                 wavec.y.values,
-                                 wavec.Hs.values,
-                                 wavec.Dir.values,
-                                 wavec.Tp.values,
-                                 wavec.surge.values,
-                                 wavec.tide.values,
-                                 wavec.depth.values)
+                                 wavec['x'],
+                                 wavec['y'],
+                                 wavec['Hs'],
+                                 wavec['Dir'],
+                                 wavec['Tp'],
+                                 wavec['surge'],
+                                 wavec['tide'],
+                                 wavec['depth'])
         
-        self.waves['time'] = wavec.time.values
+        self.waves['time'] = wavec['time']
+        self.waves['x'] = wavec['x']
+        self.waves['y'] = wavec['y']
 
     # def interpWaves(self, waves):
 
@@ -567,7 +613,7 @@ def interpWaves(x, y, xw, yw, Hs, Dir, Tp, surge, tide, depth):
         'Dir': np.zeros((Hs.shape[1], len(x))),
         'Tp': np.zeros((Hs.shape[1], len(x))),
         'surge': np.zeros((Hs.shape[1], len(x))),
-        'tide': np.zeros((Hs.shape[1], len(x))),
+        'tide': np.zeros((Hs.shape[1], len(x)))
     }
 
     for i in range(Hs.shape[1]):
