@@ -6,6 +6,7 @@ from numba import jit
 import scipy.optimize as so
 import matplotlib.pyplot as plt
 from IHSetUtils import depthOfClosure, Hs12Calc, ADEAN, wast
+from IHSetUtils import nauticalDir2cartesianDirP as n2c
 
 class shoreline:
     def __init__(self, shores, timeShores, **kwargs):
@@ -67,9 +68,10 @@ class shoreline:
                                 self.trs.xi05, self.trs.yi05,
                                 self.trs.xf05, self.trs.yf05)
         
-    def setProfiles(self, mode, **kwargs):
+    def setProfiles(self, mode, minDepth, **kwargs):
 
         self.profMode = mode
+        self.minDepth = minDepth  
         
         if mode == 'bathy':
             prof = getProfiles(self.trs.xi, self.trs.yi, self.trs.xf, self.trs.yf, kwargs['xx'], kwargs['yy'] , kwargs['zz'])
@@ -77,7 +79,7 @@ class shoreline:
 
             self.profiles = {}
             for i in range(len(self.trs.xi)):
-                jj = prof[i,:,2] < kwargs['minDepth']
+                jj = prof[i,:,2] < minDepth
                 ii = np.isnan(prof[i,:,2])
                 self.profiles[str(i+1)] = prof[i,(~ii & jj),:]        
             self.aDean = deanProfiler(self.profiles)
@@ -87,7 +89,7 @@ class shoreline:
 
             self.profiles05 = {}
             for i in range(len(self.trs.xi05)):
-                jj = prof05[i,:,2] < kwargs['minDepth']
+                jj = prof05[i,:,2] < minDepth
                 ii = np.isnan(prof05[i,:,2])
                 self.profiles05[str(i+1)] = prof05[i,(~ii & jj),:]
             
@@ -100,11 +102,10 @@ class shoreline:
             self.profiles = {}
             for i in range(len(self.trs.xi)):
                 dist_i = self.ts[0,i]
-                dist_f = wast(kwargs['minDepth'], kwargs['D50'])
+                dist_f = wast(minDepth, kwargs['D50'])
                 dist = np.linspace(dist_i, dist_i+dist_f, 100)
-                xi , xf = self.trs.xi[i], self.trs.xi[i] + np.cos(np.deg2rad(self.trs.phi[i])) * dist
-                yi, yf = self.trs.yi[i], self.trs.yi[i] + np.sin(np.deg2rad(self.trs.phi[i])) * dist
-                yi , yf = self.trs.yi[i], self.trs.yi[i] + np.sin(self.trs.phi[i]) * dist
+                xi , xf = self.trs.xi[i], self.trs.xi[i] + np.cos(np.deg2rad(n2c(self.trs.phi[i]))) * dist_f
+                yi, yf = self.trs.yi[i], self.trs.yi[i] + np.sin(np.deg2rad(n2c(self.trs.phi[i]))) * dist_f
                 x = np.linspace(xi, xf, 100)
                 y = np.linspace(yi, yf, 100)
                 z = deanProfile(self.aDean[i], np.linspace(0.0001, dist_f, 100))
@@ -113,11 +114,10 @@ class shoreline:
             self.profiles05 = {}
             for i in range(len(self.trs.xi05)):
                 dist_i = self.ts05[0,i]
-                dist_f = wast(kwargs['minDepth'], kwargs['D50'])
+                dist_f = wast(minDepth, kwargs['D50'])
                 dist = np.linspace(dist_i, dist_i+dist_f, 100)
-                xi , xf = self.trs.xi05[i], self.trs.xi05[i] + np.cos(np.deg2rad(self.trs.phi05[i])) * dist
-                yi, yf = self.trs.yi05[i], self.trs.yi05[i] + np.sin(np.deg2rad(self.trs.phi05[i])) * dist
-                yi , yf = self.trs.yi05[i], self.trs.yi05[i] + np.sin(self.trs.phi05[i]) * dist
+                xi , xf = self.trs.xi05[i], self.trs.xi05[i] + np.cos(np.deg2rad(n2c(self.trs.phi05[i]))) * dist_f
+                yi, yf = self.trs.yi05[i], self.trs.yi05[i] + np.sin(np.deg2rad(n2c(self.trs.phi05[i]))) * dist_f
                 x = np.linspace(xi, xf, 100)
                 y = np.linspace(yi, yf, 100)
                 z = deanProfile(self.aDean05[i], np.linspace(0.0001, dist_f, 100))

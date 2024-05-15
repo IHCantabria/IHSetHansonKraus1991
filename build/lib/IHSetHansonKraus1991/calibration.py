@@ -138,17 +138,17 @@ class cal_HansonKraus1991(object):
         self.Tp = self.Tp[ii:]
         self.Dir = self.Dir[ii:]
 
-        idx = np.where((self.time < self.start_date) | (self.time > self.end_date))
+        idx = np.where((self.time < self.start_date) | (self.time > self.end_date))[0]
         self.idx_validation = idx
 
-        idx = np.where((self.time >= self.start_date) & (self.time <= self.end_date))
+        idx = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0]
         self.idx_calibration = idx
         self.Hs_splited = self.Hs[idx]
         self.Tp_splited = self.Tp[idx]
         self.Dir_splited = self.Dir[idx]
         self.time_splited = self.time[idx]
 
-        idx = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))
+        idx = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
         self.Obs_splited = self.Obs[idx,:]
         self.time_obs_splited = self.time_obs[idx]
 
@@ -157,7 +157,7 @@ class cal_HansonKraus1991(object):
         self.observations = self.Obs_splited.flatten()
 
         # Validation
-        idx = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))
+        idx = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))[0]
         self.idx_validation_obs = idx[0]
         if len(self.idx_validation)>0:
             mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time[self.idx_validation] - t)))
