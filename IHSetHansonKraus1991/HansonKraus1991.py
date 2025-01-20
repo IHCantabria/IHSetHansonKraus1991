@@ -54,7 +54,7 @@ def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctyp
         # p1 = ti - desl
         # p2 = ti + desl
 
-        ysol[ti,:], hb[ti,:], dirb[ti,:], depthb[ti,:], q[ti,:], q0[ti,:] =  ydir_L(ysol[ti-1, :], dt, dx, hs[ti, :], tp[ti, :], dir[ti, :], depth, doc[ti, :], kal, X0, Y0, phi, bctype, Bcoef)
+        ysol[ti,:], hb[ti,:], dirb[ti,:], depthb[ti,:], q[ti,:], q0[ti,:] =  ydir_L(ysol[ti-1, :], dt[ti-1], dx, hs[ti, :], tp[ti, :], dir[ti, :], depth, doc[ti, :], kal, X0, Y0, phi, bctype, Bcoef)
 
 
         # if pos % 1000 == 0:
@@ -133,12 +133,15 @@ def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef)
     # else:
     q_now, q0 = ALST(hb, dirb, depthb, alfas + 90, kal)
 
-    if bctype == "Dirichlet":
+    if bctype[0] == "Dirichlet":
         q_now[0] = 0
-        q_now[-1] = 0
-    elif bctype == "Neumann":
+    elif bctype[0] == "Neumann":
         q_now[0] = q_now[1]
+    if bctype[1] == "Dirichlet":
+        q_now[-1] = 0
+    elif bctype[1] == "Neumann":
         q_now[-1] = q_now[-2]
+
 
     try:
         if (dx**2 * np.min(dc) / (4 * np.max(q0))) < dt:
@@ -148,4 +151,11 @@ def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef)
 
     ynew = y - (dt * 60 * 60) / dc * (q_now[1:] - q_now[:-1]) / dx
 
-    return ynew, hb, dirb, depthb, q_now, q0
+
+    dists_ = np.linspace(0, dx*(len(X0)-1), len(X0))
+
+    dists = dists_[:-1] + dx/2
+
+    ynew_interp = np.interp(dists_, dists, ynew)
+
+    return ynew_interp, hb, dirb, depthb, q_now, q0

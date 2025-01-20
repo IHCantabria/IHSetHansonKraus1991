@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='IHSetHansonKraus1991',
-    version='1.2.2',
+    version='1.2.3',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
@@ -14,7 +14,8 @@ setup(
         'scipy',
         'matplotlib',
         'IHSetCalibration @ git+https://github.com/defreitasL/IHSetCalibration.git',
-        'IHSetUtils @ git+https://github.com/IHCantabria/IHSetUtils.git'
+        'IHSetUtils @ git+https://github.com/IHCantabria/IHSetUtils.git',
+        'fast_optimization @ git+https://github.com/defreitasL/fast_optimization.git'
     ],
     author='Lucas de Freitas Pereira',
     author_email='lucas.defreitas@unican.es',

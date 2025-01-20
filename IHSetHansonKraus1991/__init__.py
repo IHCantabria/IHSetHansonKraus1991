@@ -4,3 +4,4 @@
 from .HansonKraus1991 import hansonKraus1991
 from .calibration import cal_HansonKraus1991
 from .transects import *
+from .calibration_2 import cal_HansonKraus1991_2

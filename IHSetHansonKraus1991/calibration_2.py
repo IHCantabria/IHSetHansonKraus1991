@@ -1,0 +1,230 @@
+import numpy as np
+import xarray as xr
+import fast_optimization as fo
+from .HansonKraus1991 import hansonKraus1991
+import pandas as pd
+import json
+
+class cal_HansonKraus1991_2(object):
+
+    """
+    cal_HansonKraus1991_2
+    
+    Configuration to calibrate and run the Hanson and Kraus (1991) One-line Model.
+    
+    This class reads input datasets, performs its calibration.
+    """
+
+    def __init__(self, path):
+
+        self.path = path
+     
+        data = xr.open_dataset(path)
+        
+        cfg = json.loads(data.attrs['Yates09'])
+
+        self.cal_alg = cfg['cal_alg']
+        self.metrics = cfg['metrics']
+        self.depth = cfg['depth']
+        self.switch_Kal = cfg['switch_Kal']
+        self.breakType = cfg['break_type']
+        self.bctype = cfg['bctype']
+        self.lb = cfg['lb']
+        self.ub = cfg['ub']
+
+        self.calibr_cfg = fo.config_cal(cfg)
+
+        self.start_date = pd.to_datetime(cfg['start_date'])
+        self.end_date = pd.to_datetime(cfg['end_date'])
+        
+        if self.breakType == 'Spectral':
+            self.Bcoef = 0.45
+        elif self.breakType == 'Monochromatic':
+            self.Bcoef = 0.78
+
+        self.Y0 = data.yi.values
+        self.X0 = data.xi.values
+        self.Xf = data.xf.values
+        self.Yf = data.yf.values
+        self.phi = data.phi.values
+        
+        self.Hs = data.hs.values
+        self.Tp = data.tp.values
+        self.Dir = data.dir.values
+        self.time = pd.to_datetime(data.time.values)
+
+        self.Obs_ = data.obs.values
+        self.Obs = data.obs.values.revel()
+        self.time_obs = pd.to_datetime(data.time_obs.values)
+        
+        data.close()
+
+        self.split_data()
+
+        self.dx = ((self.Y0[1:]- self.Y0[:-1])**2 + (self.X0[1:]- self.X0[:-1])**2)**0.5
+        
+        self.yi = self.Obs_splited[0,:]
+
+        mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time - t)))
+        self.idx_obs = mkIdx(self.time_obs)
+
+        # Now we calculate the dt from the time variable
+        mkDT = np.vectorize(lambda i: (self.time[i+1] - self.time[i]).total_seconds()/3600)
+        self.dt = mkDT(np.arange(0, len(self.time)-1))
+        mkDTsplited = np.vectorize(lambda i: (self.time_splited[i+1] - self.time_splited[i]).total_seconds()/3600)
+        self.dt_splited = mkDTsplited(np.arange(0, len(self.time_splited)-1))
+
+        if self.switch_Kal == 0:
+            def model_simulation(par):
+                K = par[0]
+                Ymd, _ = hansonKraus1991(self.yi,
+                                         self.dt,
+                                         self.dx,
+                                         self.Hs_splited,
+                                         self.Tp_splited,
+                                         self.Dir_splited,
+                                         self.depth,
+                                         self.doc,
+                                         K,
+                                         self.X0,
+                                         self.Y0,
+                                         self.phi,
+                                         self.bctype,
+                                         self.Bcoef)
+                return Ymd[self.idx_obs_splited, :].flatten()
+
+            self.model_sim = model_simulation
+
+            def run_model(par):
+                K = par[0]
+                Ymd, _ = hansonKraus1991(self.yi,
+                                         self.dt,
+                                         self.dx,
+                                         self.Hs,
+                                         self.Tp,
+                                         self.Dir,
+                                         self.depth,
+                                         self.doc,
+                                         K,
+                                         self.X0,
+                                         self.Y0,
+                                         self.phi,
+                                         self.bctype,
+                                         self.Bcoef)
+                return Ymd[self.idx_obs_splited, :].flatten()
+
+            self.run_model = run_model
+
+            def init_par(population_size):
+                log_lower_bounds = np.array([self.lb[0]])
+                log_upper_bounds = np.array([self.ub[0]])
+                population = np.zeros((population_size, 1))
+                for i in range(1):
+                    population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
+                
+                return population, log_lower_bounds, log_upper_bounds
+            
+            self.init_par = init_par
+
+        elif self.switch_Kal == 1:
+            def model_simulation(par):
+                K = list()
+                for i in range(len(par)):
+                    K = K.append(par['K'+str(i)])
+                Ymd, _ = hansonKraus1991(self.yi,
+                                         self.dt,
+                                         self.dx,
+                                         self.Hs_splited,
+                                         self.Tp_splited,
+                                         self.Dir_splited,
+                                         self.depth,
+                                         self.doc,
+                                         K,
+                                         self.X0,
+                                         self.Y0,
+                                         self.phi,
+                                         self.bctype,
+                                         self.Bcoef)
+                return Ymd[self.idx_obs_splited, :].flatten()
+
+            self.model_sim = model_simulation
+
+            def run_model(par):
+                K = list()
+                for i in range(len(par)):
+                    K = K.append(par['K'+str(i)])
+                Ymd, _ = hansonKraus1991(self.yi,
+                                         self.dt,
+                                         self.dx,
+                                         self.Hs,
+                                         self.Tp,
+                                         self.Dir,
+                                         self.depth,
+                                         self.doc,
+                                         K,
+                                         self.X0,
+                                         self.Y0,
+                                         self.phi,
+                                         self.bctype,
+                                         self.Bcoef)
+                return Ymd[self.idx_obs_splited, :].flatten()
+
+            self.run_model = run_model
+
+            def init_par(population_size):
+                log_lower_bounds = np.array([self.lb[0]])
+                log_upper_bounds = np.array([self.ub[0]])
+                population = np.zeros((population_size, len(self.X0)))
+                for i in range(len(self.X0)):
+                    population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
+                
+                return population, log_lower_bounds, log_upper_bounds
+            
+            self.init_par = init_par
+
+
+    def split_data(self):
+        """
+        Split the data into calibration and validation datasets.
+        """
+        ii = np.where(self.time>=self.start_date)[0][0]
+        self.time = self.time[ii:]
+        self.Hs = self.Hs[ii:, :]
+        self.Tp = self.Tp[ii:, :]
+        self.Dir = self.Dir[ii:, :]
+
+        idx = np.where((self.time < self.start_date) | (self.time > self.end_date))[0]
+        self.idx_validation = idx
+
+        idx = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0]
+        self.idx_calibration = idx
+        self.Hs_splited = self.Hs[idx, :]
+        self.Tp_splited = self.Tp[idx, :]
+        self.Dir_splited = self.Dir[idx, :]
+        self.time_splited = self.time[idx, :]
+
+        idx = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
+        self.Obs_splited = self.Obs[idx,:]
+        self.time_obs_splited = self.time_obs[idx]
+
+        mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time_splited - t)))
+        self.idx_obs_splited = mkIdx(self.time_obs_splited)
+        self.observations = self.Obs_splited.flatten()
+
+        # Validation
+        idx = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))[0]
+        self.idx_validation_obs = idx
+        if len(self.idx_validation)>0:
+            mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time[self.idx_validation] - t)))
+            if len(self.idx_validation_obs)>0:
+                self.idx_validation_for_obs = mkIdx(self.time_obs[idx])
+            else:
+                self.idx_validation_for_obs = []
+        else:
+            self.idx_validation_for_obs = []
+
+    def calibrate(self):
+        """
+        Calibrate the model.
+        """
+        self.solution, self.objectives, self.hist = self.calibr_cfg.calibrate(self)
