@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 import fast_optimization as fo
 from .HansonKraus1991 import hansonKraus1991
+from IHSetUtils import Hs12Calc, depthOfClosure
 import pandas as pd
 import json
 
@@ -18,10 +19,10 @@ class cal_HansonKraus1991_2(object):
     def __init__(self, path):
 
         self.path = path
-     
+
         data = xr.open_dataset(path)
         
-        cfg = json.loads(data.attrs['Yates09'])
+        cfg = json.loads(data.attrs['HansonKraus'])
 
         self.cal_alg = cfg['cal_alg']
         self.metrics = cfg['metrics']
@@ -29,6 +30,7 @@ class cal_HansonKraus1991_2(object):
         self.switch_Kal = cfg['switch_Kal']
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
+        self.doc_formula = cfg['doc_formula']
         self.lb = cfg['lb']
         self.ub = cfg['ub']
 
@@ -48,13 +50,13 @@ class cal_HansonKraus1991_2(object):
         self.Yf = data.yf.values
         self.phi = data.phi.values
         
-        self.Hs = data.hs.values
-        self.Tp = data.tp.values
-        self.Dir = data.dir.values
+        self.hs = data.hs.values
+        self.tp= data.tp.values
+        self.dir = data.dir.values
         self.time = pd.to_datetime(data.time.values)
 
         self.Obs_ = data.obs.values
-        self.Obs = data.obs.values.revel()
+        self.Obs = data.obs.values.flatten()
         self.time_obs = pd.to_datetime(data.time_obs.values)
         
         data.close()
@@ -63,7 +65,7 @@ class cal_HansonKraus1991_2(object):
 
         self.dx = ((self.Y0[1:]- self.Y0[:-1])**2 + (self.X0[1:]- self.X0[:-1])**2)**0.5
         
-        self.yi = self.Obs_splited[0,:]
+        self.yi = self.Obs_splited_[0,:]
 
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time - t)))
         self.idx_obs = mkIdx(self.time_obs)
@@ -74,15 +76,24 @@ class cal_HansonKraus1991_2(object):
         mkDTsplited = np.vectorize(lambda i: (self.time_splited[i+1] - self.time_splited[i]).total_seconds()/3600)
         self.dt_splited = mkDTsplited(np.arange(0, len(self.time_splited)-1))
 
+        self.ntrs = len(self.X0)
+        
+        self.doc = np.zeros_like(self.hs)
+        self.depth = np.zeros_like(self.hs) + self.depth
+        for k in range(self.ntrs):
+            hs12, ts12 = Hs12Calc(self.hs, self.tp)
+            self.doc[:,k] = depthOfClosure(hs12, ts12, self.doc_formula)
+        
+
         if self.switch_Kal == 0:
             def model_simulation(par):
-                K = par[0]
+                K = np.exp(par[0])
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
-                                         self.Hs_splited,
-                                         self.Tp_splited,
-                                         self.Dir_splited,
+                                         self.hs_splited,
+                                         self.tp_splited,
+                                         self.dir_splited,
                                          self.depth,
                                          self.doc,
                                          K,
@@ -91,6 +102,7 @@ class cal_HansonKraus1991_2(object):
                                          self.phi,
                                          self.bctype,
                                          self.Bcoef)
+                
                 return Ymd[self.idx_obs_splited, :].flatten()
 
             self.model_sim = model_simulation
@@ -100,9 +112,9 @@ class cal_HansonKraus1991_2(object):
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
-                                         self.Hs,
-                                         self.Tp,
-                                         self.Dir,
+                                         self.hs,
+                                         self.tp,
+                                         self.dir,
                                          self.depth,
                                          self.doc,
                                          K,
@@ -116,8 +128,8 @@ class cal_HansonKraus1991_2(object):
             self.run_model = run_model
 
             def init_par(population_size):
-                log_lower_bounds = np.array([self.lb[0]])
-                log_upper_bounds = np.array([self.ub[0]])
+                log_lower_bounds = np.array([np.log(self.lb[0])])
+                log_upper_bounds = np.array([np.log(self.ub[0])])
                 population = np.zeros((population_size, 1))
                 for i in range(1):
                     population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
@@ -130,13 +142,13 @@ class cal_HansonKraus1991_2(object):
             def model_simulation(par):
                 K = list()
                 for i in range(len(par)):
-                    K = K.append(par['K'+str(i)])
+                    K = K.append(np.exp(par[i]))
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
-                                         self.Hs_splited,
-                                         self.Tp_splited,
-                                         self.Dir_splited,
+                                         self.hs_splited,
+                                         self.tp_splited,
+                                         self.dir_splited,
                                          self.depth,
                                          self.doc,
                                          K,
@@ -152,13 +164,13 @@ class cal_HansonKraus1991_2(object):
             def run_model(par):
                 K = list()
                 for i in range(len(par)):
-                    K = K.append(par['K'+str(i)])
+                    K = K.append(par[i])
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
-                                         self.Hs,
+                                         self.hs,
                                          self.Tp,
-                                         self.Dir,
+                                         self.dir,
                                          self.depth,
                                          self.doc,
                                          K,
@@ -172,10 +184,10 @@ class cal_HansonKraus1991_2(object):
             self.run_model = run_model
 
             def init_par(population_size):
-                log_lower_bounds = np.array([self.lb[0]])
-                log_upper_bounds = np.array([self.ub[0]])
-                population = np.zeros((population_size, len(self.X0)))
-                for i in range(len(self.X0)):
+                log_lower_bounds = np.array([np.log(self.lb[0])])
+                log_upper_bounds = np.array([np.log(self.ub[0])])
+                population = np.zeros((population_size, self.ntrs))
+                for i in range(self.ntrs):
                     population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
                 
                 return population, log_lower_bounds, log_upper_bounds
@@ -189,27 +201,27 @@ class cal_HansonKraus1991_2(object):
         """
         ii = np.where(self.time>=self.start_date)[0][0]
         self.time = self.time[ii:]
-        self.Hs = self.Hs[ii:, :]
-        self.Tp = self.Tp[ii:, :]
-        self.Dir = self.Dir[ii:, :]
+        self.hs = self.hs[ii:, :]
+        self.tp= self.tp[ii:, :]
+        self.dir = self.dir[ii:, :]
 
         idx = np.where((self.time < self.start_date) | (self.time > self.end_date))[0]
         self.idx_validation = idx
 
         idx = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0]
         self.idx_calibration = idx
-        self.Hs_splited = self.Hs[idx, :]
-        self.Tp_splited = self.Tp[idx, :]
-        self.Dir_splited = self.Dir[idx, :]
-        self.time_splited = self.time[idx, :]
+        self.hs_splited = self.hs[idx, :]
+        self.tp_splited = self.tp[idx, :]
+        self.dir_splited = self.dir[idx, :]
+        self.time_splited = self.time[idx]
 
         idx = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
-        self.Obs_splited = self.Obs[idx,:]
+        self.Obs_splited_ = self.Obs_[idx,:]
+        self.Obs_splited = self.Obs_splited_.flatten()
         self.time_obs_splited = self.time_obs[idx]
 
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time_splited - t)))
         self.idx_obs_splited = mkIdx(self.time_obs_splited)
-        self.observations = self.Obs_splited.flatten()
 
         # Validation
         idx = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))[0]
@@ -228,3 +240,4 @@ class cal_HansonKraus1991_2(object):
         Calibrate the model.
         """
         self.solution, self.objectives, self.hist = self.calibr_cfg.calibrate(self)
+        self.solution = np.exp(self.solution)
