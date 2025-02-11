@@ -112,7 +112,7 @@ def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef)
     dists_ = np.linspace(0, np.sum(dx), len(X0))
     dists = dists_[:-1] + dx/2
 
-    XN, YN = abs_pos(X0, Y0, nauticalDir2cartesianDir(phi) * np.pi / 180.0, y)
+    XN, YN = abs_pos(X0, Y0, phi * np.pi / 180.0, y)
 
     alfas = np.zeros_like(hs)
     alfas_ = shore_angle(XN, YN, dire)
