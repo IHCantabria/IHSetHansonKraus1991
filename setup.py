@@ -2,25 +2,22 @@ from setuptools import setup, find_packages
 
 setup(
     name='IHSetHansonKraus1991',
-    version='1.2.4',
+    version='1.2.5',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
         'numpy',
         'xarray',
         'numba',
-        'datetime',
-        'spotpy',
         'scipy',
         'matplotlib',
-        'IHSetCalibration @ git+https://github.com/defreitasL/IHSetCalibration.git',
         'IHSetUtils @ git+https://github.com/IHCantabria/IHSetUtils.git',
         'fast_optimization @ git+https://github.com/defreitasL/fast_optimization.git'
     ],
     author='Lucas de Freitas Pereira',
     author_email='lucas.defreitas@unican.es',
     description='IH-SET Hanson and Kraus (1991)',
-    url='https://github.com/defreitasL/IHSetHansonKraus1991',
+    url='https://github.com/IHCantabria/IHSetHansonKraus1991',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',

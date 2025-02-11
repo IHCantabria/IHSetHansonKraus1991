@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
 Name: IHSetHansonKraus1991
-Version: 1.2.4
+Version: 1.2.5
 Summary: IH-SET Hanson and Kraus (1991)
-Home-page: https://github.com/defreitasL/IHSetHansonKraus1991
+Home-page: https://github.com/IHCantabria/IHSetHansonKraus1991
 Author: Lucas de Freitas Pereira
 Author-email: lucas.defreitas@unican.es
 Classifier: Development Status :: 3 - Alpha
@@ -17,10 +17,7 @@ License-File: LICENSE
 Requires-Dist: numpy
 Requires-Dist: xarray
 Requires-Dist: numba
-Requires-Dist: datetime
-Requires-Dist: spotpy
 Requires-Dist: scipy
 Requires-Dist: matplotlib
-Requires-Dist: IHSetCalibration@ git+https://github.com/defreitasL/IHSetCalibration.git
 Requires-Dist: IHSetUtils@ git+https://github.com/IHCantabria/IHSetUtils.git
 Requires-Dist: fast_optimization@ git+https://github.com/defreitasL/fast_optimization.git

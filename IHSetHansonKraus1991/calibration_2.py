@@ -21,7 +21,7 @@ class cal_HansonKraus1991_2(object):
         self.path = path
 
         data = xr.open_dataset(path)
-        
+
         cfg = json.loads(data.attrs['HansonKraus'])
 
         self.cal_alg = cfg['cal_alg']
@@ -123,7 +123,7 @@ class cal_HansonKraus1991_2(object):
                                          self.phi,
                                          self.bctype,
                                          self.Bcoef)
-                return Ymd[self.idx_obs_splited, :].flatten()
+                return Ymd
 
             self.run_model = run_model
 
@@ -179,7 +179,7 @@ class cal_HansonKraus1991_2(object):
                                          self.phi,
                                          self.bctype,
                                          self.Bcoef)
-                return Ymd[self.idx_obs_splited, :].flatten()
+                return Ymd
 
             self.run_model = run_model
 
