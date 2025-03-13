@@ -18,12 +18,13 @@ class HansonKraus1991_run(object):
     def __init__(self, path):
 
         self.path = path
+        self.name = 'Hanson and Kraus (1991)'
+        self.mode = 'standalone'
+        self.type = 'OL'
      
         data = xr.open_dataset(path)
         
         cfg = json.loads(data.attrs['run_HansonKraus'])
-
-        cfg = json.loads(data.attrs['HansonKraus'])
 
         self.cal_alg = cfg['cal_alg']
         self.metrics = cfg['metrics']
@@ -107,6 +108,15 @@ class HansonKraus1991_run(object):
     
     def run(self, par):
         self.full_run = self.run_model(par)
+        if self.switch_Kal == 1:
+            self.par_names = []
+            for i in range(len(par)):
+                self.par_names.append(rf'$K_{i}$')
+            self.par_values = par
+        elif self.switch_Kal == 0:
+            self.par_names = [r'$K$']
+            self.par_values = par
+
         self.calculate_metrics()
 
     def calculate_metrics(self):

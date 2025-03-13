@@ -19,6 +19,9 @@ class cal_HansonKraus1991_2(object):
     def __init__(self, path):
 
         self.path = path
+        self.name = 'Hanson and Kraus (1991)'
+        self.mode = 'calibration'
+        self.type = 'OL'
 
         data = xr.open_dataset(path)
 
@@ -241,3 +244,12 @@ class cal_HansonKraus1991_2(object):
         """
         self.solution, self.objectives, self.hist = self.calibr_cfg.calibrate(self)
         self.solution = np.exp(self.solution)
+
+        if self.switch_Kal == 0:
+            self.par_names = []
+            for i in range(len(self.solution)):
+                self.par_names.append(rf'$K_{i}$')
+            self.par_values = self.solution.copy()
+        elif self.switch_Kal == 1:
+            self.par_names = ['K']
+            self.par_values = self.solution.copy()
