@@ -25,6 +25,7 @@ class HansonKraus1991_run(object):
         data = xr.open_dataset(path)
         
         cfg = json.loads(data.attrs['run_HansonKraus'])
+        self.cfg = cfg
 
         self.cal_alg = cfg['cal_alg']
         self.metrics = cfg['metrics']
@@ -111,10 +112,10 @@ class HansonKraus1991_run(object):
         if self.switch_Kal == 1:
             self.par_names = []
             for i in range(len(par)):
-                self.par_names.append(rf'$K_{i}$')
+                self.par_names.append(rf'K_{i}')
             self.par_values = par
         elif self.switch_Kal == 0:
-            self.par_names = [r'$K$']
+            self.par_names = [r'K']
             self.par_values = par
 
         self.calculate_metrics()
