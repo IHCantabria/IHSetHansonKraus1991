@@ -143,6 +143,11 @@ class cal_HansonKraus1991_2(object):
             self.init_par = init_par
 
         elif self.switch_Kal == 1:
+
+            self.lb = np.repeat(self.lb, self.ntrs)
+            self.ub = np.repeat(self.ub, self.ntrs)
+
+
             def model_simulation(par):
                 K = list()
                 for i in range(len(par)):
