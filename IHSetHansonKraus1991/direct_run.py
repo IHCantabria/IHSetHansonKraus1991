@@ -27,17 +27,11 @@ class HansonKraus1991_run(object):
         cfg = json.loads(data.attrs['run_HansonKraus'])
         self.cfg = cfg
 
-        self.cal_alg = cfg['cal_alg']
-        self.metrics = cfg['metrics']
         self.depth = cfg['depth']
         self.switch_Kal = cfg['switch_Kal']
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
         self.doc_formula = cfg['doc_formula']
-        self.lb = cfg['lb']
-        self.ub = cfg['ub']
-
-        self.calibr_cfg = fo.config_cal(cfg)
 
         self.start_date = pd.to_datetime(cfg['start_date'])
         self.end_date = pd.to_datetime(cfg['end_date'])
