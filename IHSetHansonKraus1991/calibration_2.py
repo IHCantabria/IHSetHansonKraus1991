@@ -251,7 +251,9 @@ class cal_HansonKraus1991_2(object):
         Calibrate the model.
         """
         self.solution, self.objectives, self.hist = self.calibr_cfg.calibrate(self)
-        self.solution = np.exp(self.solution)
+        self.solution = self.solution
+
+        self.full_run = self.run_model(self.solution)
 
         if self.switch_Kal == 0:
             self.par_names = []
