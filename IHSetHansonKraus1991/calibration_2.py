@@ -132,8 +132,8 @@ class cal_HansonKraus1991_2(object):
             self.run_model = run_model
 
             def init_par(population_size):
-                log_lower_bounds = np.array([np.log(self.lb[0])])
-                log_upper_bounds = np.array([np.log(self.ub[0])])
+                log_lower_bounds = np.array([self.lb[0]])
+                log_upper_bounds = np.array([self.ub[0]])
                 population = np.zeros((population_size, 1))
                 for i in range(1):
                     population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
@@ -193,8 +193,8 @@ class cal_HansonKraus1991_2(object):
             self.run_model = run_model
 
             def init_par(population_size):
-                log_lower_bounds = np.array([np.log(self.lb[0])])
-                log_upper_bounds = np.array([np.log(self.ub[0])])
+                log_lower_bounds = np.array(self.lb)
+                log_upper_bounds = np.array(self.ub)
                 population = np.zeros((population_size, self.ntrs))
                 for i in range(self.ntrs):
                     population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
