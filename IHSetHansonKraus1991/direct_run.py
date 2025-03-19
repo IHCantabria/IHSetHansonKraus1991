@@ -123,7 +123,7 @@ class HansonKraus1991_run(object):
         """
         Split the data into calibration and validation datasets.
         """
-        ii = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0]
+        ii = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0][0]
         self.time = self.time[ii:]
         self.hs = self.hs[ii:, :]
         self.tp= self.tp[ii:, :]
