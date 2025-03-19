@@ -180,7 +180,7 @@ class cal_HansonKraus1991_2(object):
                                          self.dt,
                                          self.dx,
                                          self.hs,
-                                         self.Tp,
+                                         self.tp,
                                          self.dir,
                                          self.depth,
                                          self.doc,
