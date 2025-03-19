@@ -149,9 +149,10 @@ class cal_HansonKraus1991_2(object):
 
 
             def model_simulation(par):
-                K = list()
+                K = []
                 for i in range(len(par)):
-                    K = K.append(np.exp(par[i]))
+                    K.append(np.exp(par[i]))
+                K = np.array(K)
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
@@ -171,9 +172,10 @@ class cal_HansonKraus1991_2(object):
             self.model_sim = model_simulation
 
             def run_model(par):
-                K = list()
+                K = []
                 for i in range(len(par)):
-                    K = K.append(par[i])
+                    K.append(par[i])
+                K = np.array(K)
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
