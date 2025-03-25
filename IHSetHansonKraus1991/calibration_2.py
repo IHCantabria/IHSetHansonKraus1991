@@ -91,7 +91,7 @@ class cal_HansonKraus1991_2(object):
 
         if self.switch_Kal == 0:
             def model_simulation(par):
-                K = np.exp(par[0])
+                K = par[0]
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,

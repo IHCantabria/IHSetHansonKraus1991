@@ -69,8 +69,6 @@ class HansonKraus1991_run(object):
         # Now we calculate the dt from the time variable
         mkDT = np.vectorize(lambda i: (self.time[i+1] - self.time[i]).total_seconds()/3600)
         self.dt = mkDT(np.arange(0, len(self.time)-1))
-        mkDTsplited = np.vectorize(lambda i: (self.time_splited[i+1] - self.time_splited[i]).total_seconds()/3600)
-        self.dt_splited = mkDTsplited(np.arange(0, len(self.time_splited)-1))
 
         self.ntrs = len(self.X0)
         
@@ -82,7 +80,7 @@ class HansonKraus1991_run(object):
         
 
         def run_model(par):
-            K = par[0]
+            K = par
             Ymd, _ = hansonKraus1991(self.yi,
                                         self.dt,
                                         self.dx,
