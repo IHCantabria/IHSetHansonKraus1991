@@ -147,215 +147,165 @@
 
 #     return ynew, hb, dirb, depthb, q_now, q0
 
-
-
 import numpy as np
 from numba import jit
-from scipy.interpolate import PchipInterpolator
-
-from IHSetUtils.libjit.geometry import nauticalDir2cartesianDir, abs_pos, shore_angle
+from IHSetUtils.libjit.geometry import abs_pos, shore_angle
 from IHSetUtils.libjit.waves import BreakingPropagation
 from IHSetUtils.libjit.morfology import ALST
 
 ###############################################################################
-# Helper routines (PURE Python – **não** jittados)                           #
+# 0. Funções utilitárias (fantasmas) ---------------------------------------- #
 ###############################################################################
 
-def _extend_with_ghost(x_centers: np.ndarray,
-                       eta_centers: np.ndarray,
-                       bc_left: str = "neumann",
-                       bc_right: str = "neumann"):
-    """Cria arrays estendidos (centros + dois nós fantasmas).
+@jit
+def _extrapolate_ghost_nodes(X0, Y0):
+    dXL = X0[1] - X0[0]
+    dYL = Y0[1] - Y0[0]
+    dXR = X0[-1] - X0[-2]
+    dYR = Y0[-1] - Y0[-2]
 
-    A posição dos fantasmas é obtida por extrapolação linear;
-    os valores usam a condição de contorno escolhida.
+    n = X0.shape[0]
+    X0_calc = np.empty(n + 2, dtype=X0.dtype)
+    Y0_calc = np.empty(n + 2, dtype=Y0.dtype)
+    X0_calc[0] = X0[0] - dXL
+    Y0_calc[0] = Y0[0] - dYL
+    X0_calc[1:-1] = X0
+    Y0_calc[1:-1] = Y0
+    X0_calc[-1] = X0[-1] + dXR
+    Y0_calc[-1] = Y0[-1] + dYR
+    return X0_calc, Y0_calc
 
-    Parameters
-    ----------
-    x_centers : ndarray (M,)
-        Coordenadas ao longo‑costa dos centros das células.
-    eta_centers : ndarray (M,)
-        Linha de costa nos centros.
-    bc_left, bc_right : {"neumann", "dirichlet"}
-        Tipo de condição na extremidade esquerda / direita.
+@jit
+def _extend_1d(vec):
+    n = vec.shape[0]
+    ext = np.empty(n + 2, dtype=vec.dtype)
+    ext[0] = vec[0]
+    ext[1:-1] = vec
+    ext[-1] = vec[-1]
+    return ext
 
-    Returns
-    -------
-    x_ext  : ndarray (M+2,)
-    eta_ext: ndarray (M+2,)
-    """
-    dx_L = x_centers[1] - x_centers[0]
-    dx_R = x_centers[-1] - x_centers[-2]
-    x_ghost_L = x_centers[0] - dx_L
-    x_ghost_R = x_centers[-1] + dx_R
-
-    # -- valores nos fantasmas ------------------------------------------------
-    if bc_left.lower() == "neumann":
-        eta_ghost_L = eta_centers[0]
-    elif bc_left.lower() == "dirichlet":
-        eta_ghost_L = 0.0
-    else:
-        raise ValueError("bc_left deve ser 'neumann' ou 'dirichlet'.")
-
-    if bc_right.lower() == "neumann":
-        eta_ghost_R = eta_centers[-1]
-    elif bc_right.lower() == "dirichlet":
-        eta_ghost_R = 0.0
-    else:
-        raise ValueError("bc_right deve ser 'neumann' ou 'dirichlet'.")
-
-    x_ext = np.concatenate(([x_ghost_L], x_centers, [x_ghost_R]))
-    eta_ext = np.concatenate(([eta_ghost_L], eta_centers, [eta_ghost_R]))
-    return x_ext, eta_ext
-
-
-def centers_to_nodes(eta_centers: np.ndarray,
-                     x_nodes: np.ndarray,
-                     bc: tuple = ("neumann", "neumann")) -> np.ndarray:
-    """Interpola a linha de costa dos centros **para** os transectos.
-
-    Usa PCHIP (monotónica, 2ª ordem) com nós fantasmas para evitar oscilações.
-
-    Parameters
-    ----------
-    eta_centers : ndarray (M,)
-        Linha de costa nos centros.
-    x_nodes : ndarray (M+1,)
-        Coordenadas ao longo‑costa dos transectos originais.
-    bc : tuple(str, str)
-        Tipos de condição de contorno (esquerda, direita).
-
-    Returns
-    -------
-    eta_nodes : ndarray (M+1,)
-        Linha de costa em cada transecto.
-    """
-    # Construir os x dos centros a partir dos nós
-    x_centers = 0.5 * (x_nodes[:-1] + x_nodes[1:])
-    x_ext, eta_ext = _extend_with_ghost(x_centers, eta_centers,
-                                        bc_left=bc[0], bc_right=bc[1])
-    interpolador = PchipInterpolator(x_ext, eta_ext, extrapolate=False)
-    return interpolador(x_nodes)
+@jit
+def _extend_forcing(mat):
+    nt, nc = mat.shape
+    out = np.empty((nt, nc + 2), dtype=mat.dtype)
+    for t in range(nt):
+        out[t, 0] = mat[t, 0]
+        out[t, -1] = mat[t, -1]
+        for j in range(nc):
+            out[t, j + 1] = mat[t, j]
+    return out
 
 ###############################################################################
-# Núcleo numérico (JIT‑omp)                                                   #
+# 1. Núcleo dinâmico --------------------------------------------------------- #
 ###############################################################################
 
-@jit(nopython=True)
-def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal,
-           X0, Y0, phi, bctype, Bcoef):
-    """Avança uma iteração temporal do modelo Hanson & Kraus (1991).
+@jit
+def ydir_L(y, dt, dx_seg,
+           hs, tp, dire, depth, doc, kal,
+           X0, Y0, phi,
+           bctype, Bcoef):
+    """Avança um passo de tempo.
 
-    Todos os argumentos mantêm a mesma assinatura do seu código original.
-    As únicas alterações foram:
-        • Comentários / formatação.
-        • *Nenhuma* dependência SciPy dentro da região jittada.
+    Retorna `ynew`, transporte nas faces (`q_now`) **e** ΔQ/Δs já calculado
+    sobre cada transecto (`dq_nodes`).
     """
-    # -- 1. Geometria da linha de costa ---------------------------------------
+    # --- Geometria local --------------------------------------------------
     XN, YN = abs_pos(X0, Y0, phi * np.pi / 180.0, y)
-    alfas = np.empty_like(hs)
+    
+    # --- Ângulo de praia ---------------------------------------------------
+
+    alfas = np.zeros_like(hs)
     alfas_ = shore_angle(XN, YN, dire)
+    alfas[1:] = alfas_
     alfas[0] = alfas[1]
     alfas[-1] = alfas[-2]
 
-    # -- 2. Transformação onda‑quebra ----------------------------------------
-    hb, dirb, depthb = BreakingPropagation(hs, tp, dire, depth,
-                                           alfas + 90.0, Bcoef)
-
-    # -- 3. Transporte sedimentar --------------------------------------------
+    # --- Ondas → transporte ----------------------------------------------
+    hb, dirb, depthb = BreakingPropagation(hs, tp, dire, depth, alfas + 90.0, Bcoef)
+    hb[hb < 0.1] = 0.1  # não pode ser zero
+    depthb[hb < 0.1] = 0.1/Bcoef  # não pode ser zero
     dc = 0.5 * (doc[1:] + doc[:-1])
     q_now, q0 = ALST(hb, dirb, depthb, alfas + 90.0, kal)
 
-    # Condições nas extremidades (β fantasma implícito)
+    # --- BC em q_now ------------------------------------------------------
     if bctype[0] == "Dirichlet":
         q_now[0] = 0.0
-    elif bctype[0] == "Neumann":
+    else:
         q_now[0] = q_now[1]
-
     if bctype[1] == "Dirichlet":
         q_now[-1] = 0.0
-    elif bctype[1] == "Neumann":
+    else:
         q_now[-1] = q_now[-2]
 
-    # Verifica estabilidade de Courant (apenas aviso)
-    if (dx * dx * dc.min() / (4.0 * q0.max())) < dt:
-        # Numba não imprime strings grandes eficientemente
-        print("WARNING: Courant condition violated – Δt muito grande.")
+    # --- ΔQ sobre cada transecto (mesmo comprimento de y) -----------------
+    dq_nodes = np.zeros_like(y)
+    for i in range(1, y.shape[0]-1):
+        dq_nodes[i] = (q_now[i] - q_now[i-1])  # ΔQ (sem dividir por Δs)
 
-    # -- 4. Atualiza a linha de costa nos centros ----------------------------
-    ynew = y - (dt * 3600.0) / dc * (q_now[1:] - q_now[:-1]) / dx
-    return ynew, hb, dirb, depthb, q_now, q0
+    # --- Estabilidade de Courant -----------------------------------------
+    try:
+        if (dx_seg.min()**2 * dc.min() / (4.0 * q0.max())) < dt:
+            print("WARNING: COURANT CONDITION VIOLATED")
+    except:
+        pass
+
+    # --- Atualiza linha de costa (η) nos nós ------------------------------
+    ynew = y.copy()
+    for i in range(1, y.shape[0]-1):
+        ynew[i] = y[i] - (dt * 3600.0) / dc[i-1] * dq_nodes[i] / dx_seg[i-1]
+
+    return ynew, q_now, dq_nodes
 
 ###############################################################################
-# Rotina principal                                                            #
+# 2. Função de alto nível ---------------------------------------------------- #
 ###############################################################################
 
-@jit(nopython=False, parallel=False)
-# ("nopython=False" porque chamamos função Python fora do loop principal)
+@jit
 def hansonKraus1991(yi, dt, dx,
                     hs, tp, dire, depth, doc, kal,
                     X0, Y0, phi,
-                    bctype=("Neumann", "Neumann"), Bcoef=1.0):
-    """Modelo *one‑line* com criação de nós fantasmas e interpolação final.
+                    bctype, Bcoef):
+    """Modelo one‑line com fantasmas, retornando ΔQ em cada transecto.
 
-    Parameters
-    ----------
-    yi : ndarray (N_centers,)
-        Linha de costa inicial nos **centros**.
-    dt : ndarray (T,)
-        Passos de tempo [h].
-    dx : float
-        Resolução espacial [m].
-    hs, tp, dire, depth, doc : ndarray (T, N_centers)
-        Forçantes em cada centro.
-    kal : bool or ndarray
-        Flag / parâmetro Kalman.
-    X0, Y0 : ndarray (N_nodes,)
-        Coordenadas dos **transectos** reais.
-    phi : ndarray (N_centers,)
-        Ângulos da orientação local da costa.
-    bctype : (str, str)
-        ('Dirichlet' ou 'Neumann', esquerda, direita).
-    Bcoef : float
-        Coeficiente na formulação de quebra.
-
-    Returns
-    -------
-    eta_centers : ndarray (T, N_centers)
-        Linha de costa nos centros (mesmo que "ysol" original).
-    eta_nodes   : ndarray (T, N_nodes)
-        Linha de costa interpolada em cada transecto.
-    q           : ndarray (T, N_centers)
-        Transporte instantâneo em cada centro.
+    Saídas:
+        η  (ysol_trim) – shape (nt, len(X0))
+        ΔQ (dq_trim)   – mesma shape, ΔQ/Δs em cada transecto.
     """
-    n_steps, n_centers = hs.shape
-    n_nodes = n_centers + 1
+    # --- 2.1  Criar malha estendida --------------------------------------
+    X0_calc, Y0_calc = _extrapolate_ghost_nodes(X0, Y0)
+    dx_seg = np.sqrt((X0_calc[1:] - X0_calc[:-1])**2 + (Y0_calc[1:] - Y0_calc[:-1])**2)
+    phi_calc = _extend_1d(phi)
 
-    # -- Saídas ----------------------------------------------------------------
-    eta_centers = np.empty((n_steps, n_centers))
-    eta_centers[0, :] = yi
-    hb_all      = np.empty_like(hs)
-    dirb_all    = np.empty_like(hs)
-    depthb_all  = np.empty_like(hs)
-    q_all       = np.empty_like(hs)
+    hs_calc    = _extend_forcing(hs)
+    tp_calc    = _extend_forcing(tp)
+    dire_calc  = _extend_forcing(dire)
+    depth_calc = _extend_forcing(depth)
+    doc_calc   = _extend_forcing(doc)
 
-    # -------------------------------------------------------------------------
-    for t in range(1, n_steps):
-        (eta_centers[t, :],
-         hb_all[t, :],
-         dirb_all[t, :],
-         depthb_all[t, :],
-         q_all[t, :], _) = ydir_L(
-            eta_centers[t - 1, :], dt[t - 1], dx,
-            hs[t, :], tp[t, :], dire[t, :], depth[t, :],
-            doc[t, :], kal,
-            X0, Y0, phi,
+    nt, n_centers = hs_calc.shape  # n_centers = len(X0)+2
+
+    # --- 2.2  Alocar saídas ----------------------------------------------
+    ysol   = np.zeros((nt, n_centers))
+    dq_all = np.zeros((nt, n_centers))
+    q_face = np.zeros_like(hs_calc)
+
+    # --- 2.3  Condição inicial -------------------------------------------
+    ysol[0, 0]   = yi[0]
+    ysol[0, -1]  = yi[-1]
+    ysol[0, 1:-1] = yi
+
+    # --- 2.4  Loop temporal ----------------------------------------------
+    for n in range(nt-1):
+        (ysol[n+1, :],
+         q_face[n+1, :],
+         dq_all[n+1, :]) = ydir_L(
+            ysol[n, :], dt[n], dx_seg,
+            hs_calc[n+1, :], tp_calc[n+1, :], dire_calc[n+1, :],
+            depth_calc[n+1, :], doc_calc[n+1, :], kal,
+            X0_calc, Y0_calc, phi_calc,
             bctype, Bcoef)
 
-    # -------------------------------------------------------------------------
-    # Pós‑processamento: centros → transectos (fora da região jittada) ---------
-    eta_nodes = np.empty((n_steps, n_nodes))
-    for t in range(n_steps):
-        eta_nodes[t, :] = centers_to_nodes(eta_centers[t, :], X0, bc=bctype)
-
-    return eta_centers, eta_nodes, q_all
+    # --- 2.5  Remover fantasmas antes de retornar -------------------------
+    eta_nodes = ysol[:, 1:-1]
+    dq_nodes  = dq_all[:, 1:-1]
+    return eta_nodes, dq_nodes
