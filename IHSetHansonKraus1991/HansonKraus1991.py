@@ -1,7 +1,7 @@
 # import numpy as np
 # from numba import jit
 # # from datetime import datetime
-# from IHSetUtils.libjit.geometry import nauticalDir2cartesianDir, abs_pos, shore_angle
+from IHSetUtils.libjit.geometry import nauticalDir2cartesianDir, abs_pos, shore_angle
 # from IHSetUtils.libjit.waves import BreakingPropagation
 # from IHSetUtils.libjit.morfology import ALST
 
@@ -149,13 +149,46 @@
 
 import numpy as np
 from numba import jit
-from IHSetUtils.libjit.geometry import abs_pos, shore_angle
+from IHSetUtils.libjit.geometry import abs_pos, cartesianDir2nauticalDir
 from IHSetUtils.libjit.waves import BreakingPropagation
 from IHSetUtils.libjit.morfology import ALST
 
 ###############################################################################
 # 0. Funções utilitárias (fantasmas) ---------------------------------------- #
 ###############################################################################
+
+@jit
+def _compute_normals(X, Y, phi):
+    """Devolve vetor de ângulos **normais** (perpendiculares) à costa, em graus.
+
+    Para cada segmento entre os nós *i*‑*i+1* calcula‑se duas normais
+    (θ ± 90°) e escolhe‑se aquela cujo desvio em módulo de 360° em relação
+    a *phi[i]* seja < 45 graus.
+
+    *Entrada*
+        X, Y : coordenadas dos nós (len = N)
+        phi  : orientação local fornecida pelo usuário (len = N)
+
+    *Saída*
+        alfas (len = N‑1) – ângulo normal para cada segmento
+    """
+    n = X.shape[0] - 1  # número de segmentos (faces)
+    out = np.empty(n, dtype=np.float64)
+
+    for i in range(n):
+        dx = X[i+1] - X[i]
+        dy = Y[i+1] - Y[i]
+        theta = np.arctan2(dy, dx) * 180.0 / np.pi  # orientação da costa
+
+        n1 = theta + 90.0  # primeira normal
+        n2 = theta - 90.0  # normal oposta
+
+        # diferença angular mínima (−180, 180]
+        d1 = abs(((n1 - phi[i] + 180.0) % 360.0) - 180.0)
+        d2 = abs(((n2 - phi[i] + 180.0) % 360.0) - 180.0)
+
+        out[i] = n1 if d1 <= d2 else n2
+    return out
 
 @jit
 def _extrapolate_ghost_nodes(X0, Y0):
@@ -199,7 +232,7 @@ def _extend_forcing(mat):
 # 1. Núcleo dinâmico --------------------------------------------------------- #
 ###############################################################################
 
-@jit
+# @jit
 def ydir_L(y, dt, dx_seg,
            hs, tp, dire, depth, doc, kal,
            X0, Y0, phi,
@@ -215,17 +248,17 @@ def ydir_L(y, dt, dx_seg,
     # --- Ângulo de praia ---------------------------------------------------
 
     alfas = np.zeros_like(hs)
-    alfas_ = shore_angle(XN, YN, dire)
+    alfas_ = _compute_normals(XN, YN, phi)
     alfas[1:] = alfas_
     alfas[0] = alfas[1]
     alfas[-1] = alfas[-2]
 
     # --- Ondas → transporte ----------------------------------------------
-    hb, dirb, depthb = BreakingPropagation(hs, tp, dire, depth, alfas + 90.0, Bcoef)
+    hb, dirb, depthb = BreakingPropagation(hs, tp, dire, depth, alfas, Bcoef)
     hb[hb < 0.1] = 0.1  # não pode ser zero
     depthb[hb < 0.1] = 0.1/Bcoef  # não pode ser zero
     dc = 0.5 * (doc[1:] + doc[:-1])
-    q_now, q0 = ALST(hb, dirb, depthb, alfas + 90.0, kal)
+    q_now, q0 = ALST(hb, dirb, depthb, cartesianDir2nauticalDir(alfas), kal)
 
     # --- BC em q_now ------------------------------------------------------
     if bctype[0] == "Dirichlet":
@@ -243,11 +276,17 @@ def ydir_L(y, dt, dx_seg,
         dq_nodes[i] = (q_now[i] - q_now[i-1])  # ΔQ (sem dividir por Δs)
 
     # --- Estabilidade de Courant -----------------------------------------
-    try:
-        if (dx_seg.min()**2 * dc.min() / (4.0 * q0.max())) < dt:
-            print("WARNING: COURANT CONDITION VIOLATED")
-    except:
-        pass
+    # try:
+    if (dx_seg.min()**2 * dc.min() / (4.0 * q0.max())) < dt:
+        print("WARNING: COURANT CONDITION VIOLATED")
+        print('q max:' , q_now.max())
+        print('dire max:' , dire.max())
+        print('dire min:' , dire.min())
+        print('alfas max:' , alfas.max()+90)
+        print('alfas min:' , alfas.min()+90)
+        
+    # except:
+    #     pass
 
     # --- Atualiza linha de costa (η) nos nós ------------------------------
     ynew = y.copy()
@@ -260,7 +299,7 @@ def ydir_L(y, dt, dx_seg,
 # 2. Função de alto nível ---------------------------------------------------- #
 ###############################################################################
 
-@jit
+# @jit
 def hansonKraus1991(yi, dt, dx,
                     hs, tp, dire, depth, doc, kal,
                     X0, Y0, phi,
