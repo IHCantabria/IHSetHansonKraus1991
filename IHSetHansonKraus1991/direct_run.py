@@ -54,12 +54,15 @@ class HansonKraus1991_run(object):
 
         self.Obs = data.obs.values
         self.time_obs = pd.to_datetime(data.time_obs.values)
+
+        self.ntrs = len(self.X0)
+        self.dx = ((self.Y0[1:]- self.Y0[:-1])**2 + (self.X0[1:]- self.X0[:-1])**2)**0.5
+        self.dx = np.hstack((self.dx[0], ((self.Yf[1:]- self.Yf[:-1])**2 + (self.Xf[1:]- self.Xf[:-1])**2)**0.5))
         
         data.close()
 
+        self.interp_forcing()
         self.split_data()
-
-        self.dx = ((self.Y0[1:]- self.Y0[:-1])**2 + (self.X0[1:]- self.X0[:-1])**2)**0.5
         
         self.yi = self.Obs[0,:]
 
@@ -70,12 +73,11 @@ class HansonKraus1991_run(object):
         mkDT = np.vectorize(lambda i: (self.time[i+1] - self.time[i]).total_seconds()/3600)
         self.dt = mkDT(np.arange(0, len(self.time)-1))
 
-        self.ntrs = len(self.X0)
         
-        self.doc = np.zeros_like(self.hs)
-        self.depth = np.zeros_like(self.hs) + self.depth
+        self.doc = np.zeros_like(self.hs_)
+        self.depth = np.zeros_like(self.hs_) + self.depth
         for k in range(self.ntrs):
-            hs12, ts12 = Hs12Calc(self.hs, self.tp)
+            hs12, ts12 = Hs12Calc(self.hs_, self.tp_)
             self.doc[:,k] = depthOfClosure(hs12, ts12, self.doc_formula)
         
 
@@ -84,9 +86,9 @@ class HansonKraus1991_run(object):
             Ymd, _ = hansonKraus1991(self.yi,
                                         self.dt,
                                         self.dx,
-                                        self.hs,
-                                        self.tp,
-                                        self.dir,
+                                        self.hs_,
+                                        self.tp_,
+                                        self.dir_,
                                         self.depth,
                                         self.doc,
                                         K,
@@ -123,13 +125,41 @@ class HansonKraus1991_run(object):
         """
         ii = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0][0]
         self.time = self.time[ii:]
-        self.hs = self.hs[ii:, :]
-        self.tp= self.tp[ii:, :]
-        self.dir = self.dir[ii:, :]
+        self.hs_ = self.hs_[ii:, :]
+        self.tp_ = self.tp_[ii:, :]
+        self.dir_ = self.dir_[ii:, :]
 
         ii = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
         self.Obs = self.Obs[ii,:]
         self.time_obs = self.time_obs[ii]
+
+
+    def interp_forcing(self):
+        """
+        Interpolate the forcing data to the half way of the transects.
+        hs(time, trs) -> hs(time, trs+0.5)
+        tp(time, trs) -> tp(time, trs+0.5)
+        dir(time, trs) -> dir(time, trs+0.5)
+        depth(time, trs) -> depth(time, trs+0.5)
+        doc(time, trs) -> doc(time, trs+0.5)
+        """
+
+        dist = np.cumsum(self.dx)
+        dist_ = dist[1:] - self.dx[1:]/2
+
+        
+        self.hs_ = np.zeros((len(self.time), self.ntrs+1))
+        self.tp_ = np.zeros((len(self.time), self.ntrs+1))
+        self.dir_ = np.zeros((len(self.time), self.ntrs+1))
+
+        self.hs_[:, 0], self.hs_[:, -1] = self.hs[:, 0], self.hs[:, -1]
+        self.tp_[:, 0], self.tp_[:, -1] = self.tp[:, 0], self.tp[:, -1]
+        self.dir_[:, 0], self.dir_[:, -1] = self.dir[:, 0], self.dir[:, -1]
+
+        for i in range(len(self.time)):
+            self.hs_[i, 1:-1] = np.interp(dist_, dist, self.hs[i, :])
+            self.tp_[i, 1:-1] = np.interp(dist_, dist, self.tp[i, :])
+            self.dir_[i, 1:-1] = np.interp(dist_, dist, self.dir[i, :])
 
 
 
