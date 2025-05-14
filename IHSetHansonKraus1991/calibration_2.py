@@ -94,7 +94,7 @@ class cal_HansonKraus1991_2(object):
 
         if self.switch_Kal == 0:
             def model_simulation(par):
-                K = par[0]
+                K = par
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
@@ -115,7 +115,7 @@ class cal_HansonKraus1991_2(object):
             self.model_sim = model_simulation
 
             def run_model(par):
-                K = par[0]
+                K = par
                 Ymd, _ = hansonKraus1991(self.yi,
                                          self.dt,
                                          self.dx,
