@@ -72,7 +72,7 @@ def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef)
 
     Args:
         y (ndarray): Initial conditions.
-        dt (float): Time step.
+        dt (ndarray): Time step.
         dx (float): Spatial step.
         ti (int): Time index.
         hs (ndarray): Matrix representing sea surface height.
@@ -136,16 +136,9 @@ def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef)
         q_now[-1] = q_now[-2]
 
 
-    try:
-        # print('max hb = ', np.max(hb))
-        # print('max q0 = ', np.max(q0))
-        # print('max q_now = ', np.max(q_now))
-        # print('mean dx = ', np.mean(dx))
-        if (dx**2 * np.min(dc) / (4 * np.max(q0))) < (dt*60*60):
-            print("WARNING: COURANT CONDITION VIOLATED")
-    except:
-        pass
-
+    if (np.mean(dx)**2 * np.min(dc) / (4 * np.max(q0) + 1e-6)) < (dt*60*60):
+        print("WARNING: COURANT CONDITION VIOLATED")
+    
 
     ynew = y - (dt * 60 * 60) / dc * (q_now[1:] - q_now[:-1]) / dx
 
