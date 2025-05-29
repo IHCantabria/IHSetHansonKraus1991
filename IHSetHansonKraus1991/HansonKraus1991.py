@@ -1,146 +1,147 @@
 import numpy as np
-from numba import jit
+from numba import njit
 # from datetime import datetime
 from IHSetUtils.libjit.geometry import nauticalDir2cartesianDir, abs_pos, shore_angle
 from IHSetUtils.libjit.waves import BreakingPropagation
 from IHSetUtils.libjit.morfology import ALST
+import math
 
-@jit
-def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
-    """
-    Function OneLine calculates the evolution of a system over time using a numerical method.
+# @njit(fastmath=True, cache=True)
+# def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
+#     """
+#     Function OneLine calculates the evolution of a system over time using a numerical method.
 
-    Args:
-        yi (ndarray): Initial conditions.
-        dt (float): Time step.
-        dx (float): Spatial step.
-        hs (ndarray): Matrix representing sea surface height.
-        tp (ndarray): Matrix representing wave periods.
-        dir (ndarray): Matrix representing wave directions.
-        depth (float): Water depth.
-        doc (ndarray): Matrix representing diffusivity coefficients.
-        kal (bool): Flag indicating if Kalman filter is used.
-        X0 (ndarray): Initial x coordinates.
-        Y0 (ndarray): Initial y coordinates.
-        phi (ndarray): Phase angles.
-        bctype (int): Boundary condition type.
+#     Args:
+#         yi (ndarray): Initial conditions.
+#         dt (float): Time step.
+#         dx (float): Spatial step.
+#         hs (ndarray): Matrix representing sea surface height.
+#         tp (ndarray): Matrix representing wave periods.
+#         dir (ndarray): Matrix representing wave directions. [**CARTESIAN**]
+#         depth (float): Water depth.
+#         doc (ndarray): Matrix representing diffusivity coefficients.
+#         kal (bool): Flag indicating if Kalman filter is used.
+#         X0 (ndarray): Initial x coordinates.
+#         Y0 (ndarray): Initial y coordinates.
+#         phi (ndarray): Phase angles.
+#         bctype (int): Boundary condition type.
 
-    Returns:
-        ysol (ndarray): Solution matrix.
-        q (ndarray): Matrix representing some quantity.
-    """
+#     Returns:
+#         ysol (ndarray): Solution matrix.
+#         q (ndarray): Matrix representing some quantity.
+#     """
 
     
-    nti = hs.shape[0]
-    # tii = 1
-    desl = 1
+#     nti = hs.shape[0]
+#     # tii = 1
+#     desl = 1
 
-    n1 = len(X0)
-    mt, n2 = tp.shape
+#     n1 = len(X0)
+#     mt, n2 = tp.shape
 
-    ysol = np.zeros((mt, n1))
-    ysol[0, :] = yi
+#     ysol = np.zeros((mt, n1))
+#     ysol[0, :] = yi
 
-    q = np.zeros((mt, n2))
+#     q = np.zeros((mt, n2))
 
-    ## Create the ghost condition
+#     ## Create the ghost condition
 
-    # time_init = datetime.now()
-    for pos in range(0, nti-1):
+#     # time_init = datetime.now()
+#     for pos in range(0, nti-1):
         
-        ti = pos+desl
+#         ti = pos+desl
 
-        # p1 = ti - desl
-        # p2 = ti + desl
+#         # p1 = ti - desl
+#         # p2 = ti + desl
 
-        ysol[ti,:], q[ti,:] =  ydir_L(ysol[ti-1, :], dt[ti-1], dx, hs[ti, :], tp[ti, :], dir[ti, :], depth[ti, :], doc[ti, :], kal, X0, Y0, phi, bctype, Bcoef)
+#         ysol[ti,:], q[ti,:] =  ydir_L(ysol[ti-1, :], dt[ti-1], dx, hs[ti, :], tp[ti, :], dir[ti, :], depth[ti, :], doc[ti, :], kal, X0, Y0, phi, bctype, Bcoef)
 
-    # Make the interpolation for the actual transects!!!
+#     # Make the interpolation for the actual transects!!!
 
 
 
-    return ysol, q
+#     return ysol, q
 
-@jit
-def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
-    """
-    Function ydir_L calculates the propagation of waves and other quantities at a specific time step.
+# @njit(fastmath=True, cache=True)
+# def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
+#     """
+#     Function ydir_L calculates the propagation of waves and other quantities at a specific time step.
 
-    Args:
-        y (ndarray): Initial conditions.
-        dt (ndarray): Time step.
-        dx (float): Spatial step.
-        ti (int): Time index.
-        hs (ndarray): Matrix representing sea surface height.
-        tp (ndarray): Matrix representing wave periods.
-        dire (ndarray): Matrix representing wave directions.
-        depth (float): Water depth.
-        hb (ndarray): Matrix representing breaking height.
-        dirb (ndarray): Matrix representing breaking direction.
-        depthb (ndarray): Matrix representing breaking depth.
-        q (ndarray): Matrix representing some quantity.
-        doc (ndarray): Matrix representing diffusivity coefficients.
-        kal (ndarray): Matrix representing Kalman filter.
-        X0 (ndarray): Initial x coordinates.
-        Y0 (ndarray): Initial y coordinates.
-        phi (ndarray): Phase angles.
-        bctype (str): Boundary condition type.
+#     Args:
+#         y (ndarray): Initial conditions.
+#         dt (ndarray): Time step.
+#         dx (float): Spatial step.
+#         ti (int): Time index.
+#         hs (ndarray): Matrix representing sea surface height.
+#         tp (ndarray): Matrix representing wave periods.
+#         dire (ndarray): Matrix representing wave directions.
+#         depth (float): Water depth.
+#         hb (ndarray): Matrix representing breaking height.
+#         dirb (ndarray): Matrix representing breaking direction.
+#         depthb (ndarray): Matrix representing breaking depth.
+#         q (ndarray): Matrix representing some quantity.
+#         doc (ndarray): Matrix representing diffusivity coefficients.
+#         kal (ndarray): Matrix representing Kalman filter.
+#         X0 (ndarray): Initial x coordinates.
+#         Y0 (ndarray): Initial y coordinates.
+#         phi (ndarray): Phase angles.
+#         bctype (str): Boundary condition type.
 
-    Returns:
-        Tuple containing:
-        - ynew (ndarray): Updated conditions.
-        - hb (ndarray): Updated breaking height.
-        - dirb (ndarray): Updated breaking direction.
-        - depthb (ndarray): Updated breaking depth.
-        - q (ndarray): Updated quantity matrix.
-        - q0 (ndarray): Updated quantity.
-    """
+#     Returns:
+#         Tuple containing:
+#         - ynew (ndarray): Updated conditions.
+#         - hb (ndarray): Updated breaking height.
+#         - dirb (ndarray): Updated breaking direction.
+#         - depthb (ndarray): Updated breaking depth.
+#         - q (ndarray): Updated quantity matrix.
+#         - q0 (ndarray): Updated quantity.
+#     """
     
-    XN, YN = abs_pos(X0, Y0, phi * np.pi / 180.0, y)
+#     XN, YN = abs_pos(X0, Y0, phi * np.pi / 180.0, y)
 
-    alfas = np.zeros_like(hs)
-    # alfas_ = shore_angle(XN, YN, dire)
-    alfas_ = _compute_normals(XN, YN, phi)
-    alfas[1:-1] = alfas_
-    alfas[0] = alfas[1]
-    alfas[-1] = alfas[-2]
+#     alfas = np.zeros_like(hs)
+#     # alfas_ = shore_angle(XN, YN, dire)
+#     alfas_ = _compute_normals(XN, YN, phi)
+#     alfas[1:-1] = alfas_
+#     alfas[0] = alfas[1]
+#     alfas[-1] = alfas[-2]
 
-    # try:
-    hb, dirb, depthb = BreakingPropagation(hs, tp, dire, depth, alfas, Bcoef)
-    # except:
-    #     flag_dig = True
-    #     print("Waves diverged -- Q_tot = 0")
-    #     hb = np.zeros_like(hs) + 0.01
-    #     dirb = np.zeros_like(dire) + alfas + 90
-    #     depthb = np.zeros_like(depth) + 0.01
+#     # try:
+#     hb, dirb, depthb = BreakingPropagation(hs, tp, dire, depth, alfas, Bcoef)
+#     # except:
+#     #     flag_dig = True
+#     #     print("Waves diverged -- Q_tot = 0")
+#     #     hb = np.zeros_like(hs) + 0.01
+#     #     dirb = np.zeros_like(dire) + alfas + 90
+#     #     depthb = np.zeros_like(depth) + 0.01
         
-    dc = 0.5 * (doc[1:] + doc[:-1])
+#     dc = 0.5 * (doc[1:] + doc[:-1])
 
-    # if flag_dig:
-    #     q_now = np.zeros_like(hs)
-    #     q0 = np.zeros_like(hs)
-    # else:
-    q_now, q0 = ALST(hb, dirb, depthb, alfas, kal)
+#     # if flag_dig:
+#     #     q_now = np.zeros_like(hs)
+#     #     q0 = np.zeros_like(hs)
+#     # else:
+#     q_now, q0 = ALST(hb, dirb, depthb, alfas, kal)
 
-    if bctype[0] == "Dirichlet":
-        q_now[0] = 0
-    elif bctype[0] == "Neumann":
-        q_now[0] = q_now[1]
-    if bctype[1] == "Dirichlet":
-        q_now[-1] = 0
-    elif bctype[1] == "Neumann":
-        q_now[-1] = q_now[-2]
+#     if bctype[0] == 0:
+#         q_now[0] = 0
+#     elif bctype[0] == 1:
+#         q_now[0] = q_now[1]
+#     if bctype[1] == 0:
+#         q_now[-1] = 0
+#     elif bctype[1] == 1:
+#         q_now[-1] = q_now[-2]
 
 
-    if (np.mean(dx)**2 * np.min(dc) / (4 * np.max(q0) + 1e-6)) < (dt*60*60):
-        # print("WARNING: COURANT CONDITION VIOLATED")
-        return y, q_now
+#     if (np.mean(dx)**2 * np.min(dc) / (4 * np.max(q0) + 1e-6)) < (dt*60*60):
+#         print("WARNING: COURANT CONDITION VIOLATED")
+#         return y, q_now
     
 
-    ynew = y - (dt * 60 * 60) / dc * (q_now[1:] - q_now[:-1]) / dx
+#     ynew = y - (dt * 60 * 60) / dc * (q_now[1:] - q_now[:-1]) / dx
 
 
-    return ynew, q_now
+#     return ynew, q_now
 
 # import numpy as np
 # from numba import jit
@@ -152,7 +153,7 @@ def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef)
 # # 0. Funções utilitárias (fantasmas) ---------------------------------------- #
 # ###############################################################################
 
-@jit
+@njit(fastmath=True, cache=True)
 def _compute_normals(X, Y, phi):
     """Devolve vetor de ângulos **normais** (perpendiculares) à costa, em graus.
 
@@ -184,6 +185,62 @@ def _compute_normals(X, Y, phi):
 
         out[i] = n1 if d1 <= d2 else n2
     return out
+
+
+
+@njit(fastmath=True, cache=True)
+def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
+
+    n1 = len(X0)
+    mt, n2 = tp.shape
+
+    # preallocate output and buffers
+    ysol = np.zeros((mt, n1))
+    q    = np.zeros((mt, n2))
+    alfas = np.empty(n2, dtype=np.float64)      # reuse buffer for alfas
+
+    ysol[0, :] = yi
+
+    phi_rad = np.empty(n1, dtype=np.float64)
+    for i in range(n1):
+        phi_rad[i] = phi[i] * np.pi / 180.0
+    
+    for t in range(1, mt):
+        # compute alfas once per time step
+        XN, YN = abs_pos(X0, Y0, phi_rad, ysol[t-1,:])
+        normals = _compute_normals(XN, YN, phi)
+        # fill alfas buffer
+        alfas[1:-1] = normals
+        alfas[0] = normals[0]
+        alfas[-1] = normals[-1]
+
+        # propagate waves and compute transport
+        hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth[t,:], alfas, Bcoef)
+        q_now, _ = ALST(hb, dirb, depthb, alfas, kal)
+
+        # apply boundary conditions
+        if bctype[0] == 0:
+            q_now[0] = 0.0
+        else:
+            q_now[0] = q_now[1]
+        if bctype[1] == 0:
+            q_now[-1] = 0.0
+        else:
+            q_now[-1] = q_now[-2]
+
+        # diffusion midpoints
+        dc = 0.5 * (doc[t, 1:] + doc[t, :-1])
+
+        ynew = np.empty(n1, dtype=np.float64)
+        for i in range(n1):
+            inv_i = dt[t-1] * 3600.0 / dx[i]
+            ynew[i] = ysol[t-1, i] - inv_i * (q_now[i+1] - q_now[i]) / dc[i]
+
+
+        ysol[t,:] = ynew
+        q[t,:]     = q_now
+
+    return ysol, q
 
 # @jit
 # def _extrapolate_ghost_nodes(X0, Y0):

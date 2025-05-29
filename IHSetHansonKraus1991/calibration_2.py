@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import fast_optimization as fo
 from .HansonKraus1991 import hansonKraus1991
-from IHSetUtils import Hs12Calc, depthOfClosure
+from IHSetUtils import Hs12Calc, depthOfClosure, nauticalDir2cartesianDir
 import pandas as pd
 import json
 
@@ -48,6 +48,18 @@ class cal_HansonKraus1991_2(object):
         elif self.breakType == 'Monochromatic':
             self.Bcoef = 0.78
 
+        bc_conv = [0,0]
+        if self.bctype[0] == 'Dirichlet':
+            bc_conv[0] = 0
+        elif self.bctype[0] == 'Neumann':
+            bc_conv[0] = 1
+        if self.bctype[1] == 'Dirichlet':
+            bc_conv[1] = 0
+        elif self.bctype[1] == 'Neumann':
+            bc_conv[1] = 1
+        
+        self.bctype = np.array(bc_conv)
+
         self.Y0 = data.yi.values
         self.X0 = data.xi.values
         self.Xf = data.xf.values
@@ -56,7 +68,7 @@ class cal_HansonKraus1991_2(object):
         
         self.hs = data.hs.values
         self.tp= data.tp.values
-        self.dir = data.dir.values
+        self.dir = nauticalDir2cartesianDir(data.dir.values)
         self.time = pd.to_datetime(data.time.values)
 
         self.Obs_ = data.obs.values
