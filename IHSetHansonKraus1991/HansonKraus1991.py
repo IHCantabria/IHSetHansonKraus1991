@@ -41,11 +41,7 @@ def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctyp
     ysol = np.zeros((mt, n1))
     ysol[0, :] = yi
 
-    hb = np.zeros((mt, n2))
-    dirb = np.zeros((mt, n2))
-    depthb = np.zeros((mt, n2))
     q = np.zeros((mt, n2))
-    q0 = np.zeros((mt, n2))
 
     ## Create the ghost condition
 
@@ -57,7 +53,7 @@ def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctyp
         # p1 = ti - desl
         # p2 = ti + desl
 
-        ysol[ti,:], hb[ti,:], dirb[ti,:], depthb[ti,:], q[ti,:], q0[ti,:] =  ydir_L(ysol[ti-1, :], dt[ti-1], dx, hs[ti, :], tp[ti, :], dir[ti, :], depth[ti, :], doc[ti, :], kal, X0, Y0, phi, bctype, Bcoef)
+        ysol[ti,:], q[ti,:] =  ydir_L(ysol[ti-1, :], dt[ti-1], dx, hs[ti, :], tp[ti, :], dir[ti, :], depth[ti, :], doc[ti, :], kal, X0, Y0, phi, bctype, Bcoef)
 
     # Make the interpolation for the actual transects!!!
 
@@ -137,13 +133,14 @@ def ydir_L(y, dt, dx, hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype, Bcoef)
 
 
     if (np.mean(dx)**2 * np.min(dc) / (4 * np.max(q0) + 1e-6)) < (dt*60*60):
-        print("WARNING: COURANT CONDITION VIOLATED")
+        # print("WARNING: COURANT CONDITION VIOLATED")
+        return y, q_now
     
 
     ynew = y - (dt * 60 * 60) / dc * (q_now[1:] - q_now[:-1]) / dx
 
 
-    return ynew, hb, dirb, depthb, q_now, q0
+    return ynew, q_now
 
 # import numpy as np
 # from numba import jit
