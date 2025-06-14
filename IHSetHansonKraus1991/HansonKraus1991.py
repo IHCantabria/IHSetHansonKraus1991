@@ -186,10 +186,8 @@ def _compute_normals(X, Y, phi):
         out[i] = n1 if d1 <= d2 else n2
     return out
 
-
-
 @njit(fastmath=True, cache=True)
-def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctype, Bcoef):
+def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctype, Bcoef, formula, mb, D50):
 
     n1 = len(X0)
     mt, n2 = tp.shape
@@ -216,7 +214,8 @@ def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctyp
 
         # propagate waves and compute transport
         hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth[t,:], alfas, Bcoef)
-        q_now, _ = ALST(hb, dirb, depthb, alfas, kal)
+        # ALST(Hb, Tp, Dirb, hb, bathy_angle, K, D50, mb, formula)
+        q_now, _ = ALST(hb, tp[t,:],dirb, depthb, alfas, kal, mb, D50, formula)
 
         # apply boundary conditions
         if bctype[0] == 0:

@@ -30,18 +30,29 @@ class cal_HansonKraus1991_2(object):
 
         self.cal_alg = cfg['cal_alg']
         self.metrics = cfg['metrics']
-        self.depth = cfg['depth']
         self.switch_Kal = cfg['switch_Kal']
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
         self.doc_formula = cfg['doc_formula']
         self.lb = cfg['lb']
         self.ub = cfg['ub']
+        self.fomulation = cfg['formulation']
+        self.mb = cfg['mb']
+        self.D50 = cfg['D50']
 
         self.calibr_cfg = fo.config_cal(cfg)
 
         self.start_date = pd.to_datetime(cfg['start_date'])
         self.end_date = pd.to_datetime(cfg['end_date'])
+
+        if self.fomulation == 'CERC (1984)':
+            self.fomulation = 1
+        elif self.fomulation == 'Komar (1998)':
+            self.fomulation = 2
+        elif self.fomulation == 'Kamphhuis (2002)':
+            self.fomulation = 3
+        elif self.fomulation == 'Van Rijn (2014)':
+            self.fomulation = 4
         
         if self.breakType == 'Spectral':
             self.Bcoef = 0.45
@@ -65,6 +76,7 @@ class cal_HansonKraus1991_2(object):
         self.Xf = data.xf.values
         self.Yf = data.yf.values
         self.phi = data.phi.values
+        self.depth = data.waves_depth.values
         
         self.hs = data.hs.values
         self.tp= data.tp.values
@@ -98,7 +110,7 @@ class cal_HansonKraus1991_2(object):
 
         
         self.doc = np.zeros_like(self.hs_)
-        self.depth = np.zeros_like(self.hs_) + self.depth
+        # self.depth = np.zeros_like(self.hs_) + self.depth
         for k in range(self.ntrs):
             hs12, ts12 = Hs12Calc(self.hs_, self.tp_)
             self.doc[:,k] = depthOfClosure(hs12, ts12, self.doc_formula)
@@ -106,8 +118,9 @@ class cal_HansonKraus1991_2(object):
 
         if self.switch_Kal == 0:
             def model_simulation(par):
-                K = par
-                Ymd, _ = hansonKraus1991(self.yi,
+                K = np.array([par[0]])
+                y_ini = par[1:]
+                Ymd, _ = hansonKraus1991(y_ini,
                                          self.dt,
                                          self.dx,
                                          self.hs_splited,
@@ -120,15 +133,19 @@ class cal_HansonKraus1991_2(object):
                                          self.Y0,
                                          self.phi,
                                          self.bctype,
-                                         self.Bcoef)
+                                         self.Bcoef,
+                                         self.fomulation,
+                                         self.mb,
+                                         self.D50)
                 
                 return Ymd[self.idx_obs_splited, :].flatten()
 
             self.model_sim = model_simulation
 
             def run_model(par):
-                K = par
-                Ymd, _ = hansonKraus1991(self.yi,
+                K = np.array([par[0]])
+                y_ini = par[1:]
+                Ymd, _ = hansonKraus1991(y_ini,
                                          self.dt,
                                          self.dx,
                                          self.hs_,
@@ -141,16 +158,22 @@ class cal_HansonKraus1991_2(object):
                                          self.Y0,
                                          self.phi,
                                          self.bctype,
-                                         self.Bcoef)
+                                         self.Bcoef,
+                                         self.fomulation,
+                                         self.mb,
+                                         self.D50)
                 return Ymd
 
             self.run_model = run_model
 
             def init_par(population_size):
-                log_lower_bounds = np.array([self.lb[0]])
-                log_upper_bounds = np.array([self.ub[0]])
-                population = np.zeros((population_size, 1))
-                for i in range(1):
+                log_lower_bounds = np.array(self.lb[0])
+                log_upper_bounds = np.array(self.ub[0])
+                for i in range(self.ntrs):
+                    log_lower_bounds = np.append(log_lower_bounds, np.nanmin(self.Obs_[:, i]))
+                    log_upper_bounds = np.append(log_upper_bounds, np.nanmax(self.Obs_[:, i]))
+                population = np.zeros((population_size, 1+ self.ntrs))
+                for i in range(1 + self.ntrs):
                     population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
                 
                 return population, log_lower_bounds, log_upper_bounds
@@ -181,7 +204,10 @@ class cal_HansonKraus1991_2(object):
                                          self.Y0,
                                          self.phi,
                                          self.bctype,
-                                         self.Bcoef)
+                                         self.Bcoef,
+                                         self.fomulation,
+                                         self.mb,
+                                         self.D50)
                 return Ymd[self.idx_obs_splited, :].flatten()
 
             self.model_sim = model_simulation
@@ -204,7 +230,10 @@ class cal_HansonKraus1991_2(object):
                                          self.Y0,
                                          self.phi,
                                          self.bctype,
-                                         self.Bcoef)
+                                         self.Bcoef,
+                                         self.fomulation,
+                                         self.mb,
+                                         self.D50)
                 return Ymd
 
             self.run_model = run_model
