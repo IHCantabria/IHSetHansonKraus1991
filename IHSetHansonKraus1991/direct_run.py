@@ -32,6 +32,7 @@ class HansonKraus1991_run(object):
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
         self.doc_formula = cfg['doc_formula']
+        self.fomulation = cfg['formulation']
 
         self.start_date = pd.to_datetime(cfg['start_date'])
         self.end_date = pd.to_datetime(cfg['end_date'])
@@ -40,6 +41,17 @@ class HansonKraus1991_run(object):
             self.Bcoef = 0.45
         elif self.breakType == 'Monochromatic':
             self.Bcoef = 0.78
+
+        if self.fomulation == 'CERC (1984)':
+            self.fomulation = 1
+        elif self.fomulation == 'Komar (1998)':
+            self.fomulation = 2
+        elif self.fomulation == 'Kamphhuis (2002)':
+            self.fomulation = 3
+            self.mb = cfg['mb']
+            self.D50 = cfg['D50']
+        elif self.fomulation == 'Van Rijn (2014)':
+            self.fomulation = 4
 
         self.Y0 = data.yi.values
         self.X0 = data.xi.values
@@ -96,7 +108,10 @@ class HansonKraus1991_run(object):
                                         self.Y0,
                                         self.phi,
                                         self.bctype,
-                                        self.Bcoef)
+                                        self.Bcoef,
+                                         self.fomulation,
+                                         self.mb,
+                                         self.D50)
             return Ymd
 
         self.run_model = run_model
