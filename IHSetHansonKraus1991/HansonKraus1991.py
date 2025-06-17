@@ -213,7 +213,7 @@ def hansonKraus1991(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, bctyp
         alfas[-1] = normals[-1]
 
         # propagate waves and compute transport
-        hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth[t,:], alfas, Bcoef)
+        hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth, alfas, Bcoef)
         # ALST(Hb, Tp, Dirb, hb, bathy_angle, K, D50, mb, formula)
         q_now, _ = ALST(hb, tp[t,:],dirb, depthb, alfas, kal, mb, D50, formula)
 

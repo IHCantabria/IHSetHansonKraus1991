@@ -91,7 +91,7 @@ class cal_HansonKraus1991_2(object):
         self.Obs = data.obs.values.flatten()
         self.time_obs = pd.to_datetime(data.time_obs.values)
 
-
+    
                 
         self.ntrs = len(self.X0)
         self.dx = ((self.Y0[1:]- self.Y0[:-1])**2 + (self.X0[1:]- self.X0[:-1])**2)**0.5
