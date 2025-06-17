@@ -38,6 +38,8 @@ class cal_HansonKraus1991_2(object):
         self.ub = cfg['ub']
         self.fomulation = cfg['formulation']
 
+        self.mb = 0
+        self.D50 = 0
 
 
         self.calibr_cfg = fo.config_cal(cfg)

@@ -114,9 +114,9 @@ class HansonKraus1991_run(object):
                                         self.phi,
                                         self.bctype,
                                         self.Bcoef,
-                                         self.fomulation,
-                                         self.mb,
-                                         self.D50)
+                                        self.fomulation,
+                                        self.mb,
+                                        self.D50)
             return Ymd
 
         self.run_model = run_model
