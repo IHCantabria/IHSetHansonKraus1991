@@ -37,8 +37,8 @@ class cal_HansonKraus1991_2(object):
         self.lb = cfg['lb']
         self.ub = cfg['ub']
         self.fomulation = cfg['formulation']
-        self.mb = cfg['mb']
-        self.D50 = cfg['D50']
+
+
 
         self.calibr_cfg = fo.config_cal(cfg)
 
@@ -51,6 +51,8 @@ class cal_HansonKraus1991_2(object):
             self.fomulation = 2
         elif self.fomulation == 'Kamphhuis (2002)':
             self.fomulation = 3
+            self.mb = cfg['mb']
+            self.D50 = cfg['D50']
         elif self.fomulation == 'Van Rijn (2014)':
             self.fomulation = 4
         
