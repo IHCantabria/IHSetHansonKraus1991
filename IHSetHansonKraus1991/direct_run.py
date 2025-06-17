@@ -27,7 +27,7 @@ class HansonKraus1991_run(object):
         cfg = json.loads(data.attrs['run_HansonKraus'])
         self.cfg = cfg
 
-        self.depth = cfg['depth']
+        
         self.switch_Kal = cfg['switch_Kal']
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
@@ -58,6 +58,7 @@ class HansonKraus1991_run(object):
         self.Xf = data.xf.values
         self.Yf = data.yf.values
         self.phi = data.phi.values
+        self.depth = data.waves_depth.values
         
         self.hs = data.hs.values
         self.tp= data.tp.values
@@ -87,7 +88,7 @@ class HansonKraus1991_run(object):
 
         
         self.doc = np.zeros_like(self.hs_)
-        self.depth = np.zeros_like(self.hs_) + self.depth
+        
         for k in range(self.ntrs):
             hs12, ts12 = Hs12Calc(self.hs_, self.tp_)
             self.doc[:,k] = depthOfClosure(hs12, ts12, self.doc_formula)
