@@ -2,7 +2,6 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import fast_optimization as fo
-from .HansonKraus1991 import hansonKraus1991
 from IHSetUtils import Hs12Calc, depthOfClosure
 import json
 

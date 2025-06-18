@@ -1,7 +1,6 @@
 import numpy as np
 import xarray as xr
 import fast_optimization as fo
-from .HansonKraus1991 import hansonKraus1991
 from IHSetUtils import Hs12Calc, depthOfClosure, nauticalDir2cartesianDir
 import pandas as pd
 import json
