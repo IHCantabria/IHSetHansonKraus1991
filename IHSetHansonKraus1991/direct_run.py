@@ -27,8 +27,8 @@ class HansonKraus1991_run(object):
         cfg = json.loads(data.attrs['run_HansonKraus'])
         self.cfg = cfg
 
-        self.mb = 0
-        self.D50 = 0
+        self.mb = 1/100 # Default value for mb in Kamphuis (2002)
+        self.D50 = 0.3e-3  # Default value for D50 in Kamphuis (2002)
 
         
         self.switch_Kal = cfg['switch_Kal']
@@ -50,7 +50,7 @@ class HansonKraus1991_run(object):
             self.fomulation = 1
         elif self.fomulation == 'Komar (1998)':
             self.fomulation = 2
-        elif self.fomulation == 'Kamphhuis (2002)':
+        elif self.fomulation == 'Kamphuis (2002)':
             self.fomulation = 3
             self.mb = cfg['mb']
             self.D50 = cfg['D50']

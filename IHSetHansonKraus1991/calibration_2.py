@@ -38,8 +38,8 @@ class cal_HansonKraus1991_2(object):
         self.ub = cfg['ub']
         self.fomulation = cfg['formulation']
 
-        self.mb = 0
-        self.D50 = 0
+        self.mb = 1/100 # Default value for mb in Kamphuis (2002)
+        self.D50 = 0.3e-3  # Default value for D50 in Kamphuis (2002)
 
 
         self.calibr_cfg = fo.config_cal(cfg)
@@ -51,7 +51,7 @@ class cal_HansonKraus1991_2(object):
             self.fomulation = 1
         elif self.fomulation == 'Komar (1998)':
             self.fomulation = 2
-        elif self.fomulation == 'Kamphhuis (2002)':
+        elif self.fomulation == 'Kamphuis (2002)':
             self.fomulation = 3
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
