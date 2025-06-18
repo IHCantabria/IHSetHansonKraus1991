@@ -35,7 +35,7 @@ class HansonKraus1991_run(object):
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
         self.doc_formula = cfg['doc_formula']
-        self.fomulation = cfg['formulation']
+        self.formulation = cfg['formulation']
 
 
         self.start_date = pd.to_datetime(cfg['start_date'])
@@ -46,16 +46,21 @@ class HansonKraus1991_run(object):
         elif self.breakType == 'Monochromatic':
             self.Bcoef = 0.78
 
-        if self.fomulation == 'CERC (1984)':
-            self.fomulation = 1
-        elif self.fomulation == 'Komar (1998)':
-            self.fomulation = 2
-        elif self.fomulation == 'Kamphuis (2002)':
-            self.fomulation = 3
+
+        if self.formulation == 'CERC (1984)':
+            print('Using CERC (1984) formulation')
+            from .HansonKraus1991 import hansonKraus1991_cerq as hansonKraus1991
+        elif self.formulation == 'Komar (1998)':
+            print('Using Komar (1998) formulation')
+            from .HansonKraus1991 import hansonKraus1991_komar as hansonKraus1991
+        elif self.formulation == 'Kamphuis (2002)':
+            print('Using Kamphuis (2002) formulation')
+            from .HansonKraus1991 import hansonKraus1991_kamphuis as hansonKraus1991
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
-        elif self.fomulation == 'Van Rijn (2014)':
-            self.fomulation = 4
+        elif self.formulation == 'Van Rijn (2014)':
+            print('Using Van Rijn (2014) formulation')
+            from .HansonKraus1991 import hansonKraus1991_vanrijn as hansonKraus1991
 
         self.Y0 = data.yi.values
         self.X0 = data.xi.values
@@ -114,7 +119,6 @@ class HansonKraus1991_run(object):
                                         self.phi,
                                         self.bctype,
                                         self.Bcoef,
-                                        self.fomulation,
                                         self.mb,
                                         self.D50)
             return Ymd
