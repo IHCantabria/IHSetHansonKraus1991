@@ -29,8 +29,7 @@ class cal_HansonKraus1991_2(object):
 
         self.cal_alg = cfg['cal_alg']
         self.metrics = cfg['metrics']
-        # self.switch_Kal = cfg['switch_Kal']
-        self.switch_Kal = 0 
+        self.switch_Kal = cfg['switch_Kal']
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
         self.doc_formula = cfg['doc_formula']
@@ -49,18 +48,18 @@ class cal_HansonKraus1991_2(object):
 
         if self.formulation == 'CERC (1984)':
             print('Using CERC (1984) formulation')
-            from .HansonKraus1991 import hansonKraus1991_cerq as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_cerq as hk1991
         elif self.formulation == 'Komar (1998)':
             print('Using Komar (1998) formulation')
-            from .HansonKraus1991 import hansonKraus1991_komar as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_komar as hk1991
         elif self.formulation == 'Kamphuis (2002)':
             print('Using Kamphuis (2002) formulation')
-            from .HansonKraus1991 import hansonKraus1991_kamphuis as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_kamphuis as hk1991
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
         elif self.formulation == 'Van Rijn (2014)':
             print('Using Van Rijn (2014) formulation')
-            from .HansonKraus1991 import hansonKraus1991_vanrijn as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_vanrijn as hk1991
         
         if self.breakType == 'Spectral':
             self.Bcoef = 0.45
@@ -126,9 +125,9 @@ class cal_HansonKraus1991_2(object):
 
         if self.switch_Kal == 0:
             def model_simulation(par):
-                K = np.array([par[0]])
+                K = par
                 # y_ini = par[1:]
-                Ymd, _ = hansonKraus1991(self.yi, #y_ini,
+                Ymd, _ = hk1991(self.yi, #y_ini,
                                          self.dt,
                                          self.dx,
                                          self.hs_splited,
@@ -150,9 +149,9 @@ class cal_HansonKraus1991_2(object):
             self.model_sim = model_simulation
 
             def run_model(par):
-                K = np.array([par[0]])
+                K = par
                 # y_ini = par[1:]
-                Ymd, _ = hansonKraus1991(self.yi, #y_ini,
+                Ymd, _ = hk1991(self.yi, #y_ini,
                                          self.dt,
                                          self.dx,
                                          self.hs_,
@@ -197,7 +196,7 @@ class cal_HansonKraus1991_2(object):
                 for i in range(len(par)):
                     K.append(par[i])
                 K = np.array(K)
-                Ymd, _ = hansonKraus1991(self.yi,
+                Ymd, _ = hk1991(self.yi,
                                          self.dt,
                                          self.dx,
                                          self.hs_splited,
@@ -222,7 +221,7 @@ class cal_HansonKraus1991_2(object):
                 for i in range(len(par)):
                     K.append(par[i])
                 K = np.array(K)
-                Ymd, _ = hansonKraus1991(self.yi,
+                Ymd, _ = hk1991(self.yi,
                                          self.dt,
                                          self.dx,
                                          self.hs_,

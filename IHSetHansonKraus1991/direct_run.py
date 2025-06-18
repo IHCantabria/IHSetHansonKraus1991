@@ -60,6 +60,8 @@ class HansonKraus1991_run(object):
         elif self.formulation == 'Van Rijn (2014)':
             print('Using Van Rijn (2014) formulation')
             from .HansonKraus1991 import hansonKraus1991_vanrijn as hansonKraus1991
+            self.mb = cfg['mb']
+            self.D50 = cfg['D50']
 
         self.Y0 = data.yi.values
         self.X0 = data.xi.values
