@@ -30,7 +30,8 @@ class cal_HansonKraus1991_2(object):
 
         self.cal_alg = cfg['cal_alg']
         self.metrics = cfg['metrics']
-        self.switch_Kal = cfg['switch_Kal']
+        # self.switch_Kal = cfg['switch_Kal']
+        self.switch_Kal = 0 
         self.breakType = cfg['break_type']
         self.bctype = cfg['bctype']
         self.doc_formula = cfg['doc_formula']
@@ -48,15 +49,19 @@ class cal_HansonKraus1991_2(object):
         self.end_date = pd.to_datetime(cfg['end_date'])
 
         if self.fomulation == 'CERC (1984)':
-            self.fomulation = 1
+            print('Using CERC (1984) formulation')
+            self.alst_fomulation = 1
         elif self.fomulation == 'Komar (1998)':
-            self.fomulation = 2
+            print('Using Komar (1998) formulation')
+            self.alst_fomulation = 2
         elif self.fomulation == 'Kamphuis (2002)':
-            self.fomulation = 3
+            print('Using Kamphuis (2002) formulation')
+            self.alst_fomulation = 3
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
         elif self.fomulation == 'Van Rijn (2014)':
-            self.fomulation = 4
+            print('Using Van Rijn (2014) formulation')
+            self.alst_fomulation = 4
         
         if self.breakType == 'Spectral':
             self.Bcoef = 0.45
@@ -123,8 +128,8 @@ class cal_HansonKraus1991_2(object):
         if self.switch_Kal == 0:
             def model_simulation(par):
                 K = np.array([par[0]])
-                y_ini = par[1:]
-                Ymd, _ = hansonKraus1991(y_ini,
+                # y_ini = par[1:]
+                Ymd, _ = hansonKraus1991(self.yi, #y_ini,
                                          self.dt,
                                          self.dx,
                                          self.hs_splited,
@@ -138,7 +143,7 @@ class cal_HansonKraus1991_2(object):
                                          self.phi,
                                          self.bctype,
                                          self.Bcoef,
-                                         self.fomulation,
+                                         self.alst_fomulation,
                                          self.mb,
                                          self.D50)
                 
@@ -148,8 +153,8 @@ class cal_HansonKraus1991_2(object):
 
             def run_model(par):
                 K = np.array([par[0]])
-                y_ini = par[1:]
-                Ymd, _ = hansonKraus1991(y_ini,
+                # y_ini = par[1:]
+                Ymd, _ = hansonKraus1991(self.yi, #y_ini,
                                          self.dt,
                                          self.dx,
                                          self.hs_,
@@ -163,7 +168,7 @@ class cal_HansonKraus1991_2(object):
                                          self.phi,
                                          self.bctype,
                                          self.Bcoef,
-                                         self.fomulation,
+                                         self.alst_fomulation,
                                          self.mb,
                                          self.D50)
                 return Ymd
@@ -174,9 +179,9 @@ class cal_HansonKraus1991_2(object):
                 log_lower_bounds = np.array(self.lb[0])
                 log_upper_bounds = np.array(self.ub[0])
                 for i in range(self.ntrs):
-                    log_lower_bounds = np.append(log_lower_bounds, np.nanmin(self.Obs_[:, i]))
-                    log_upper_bounds = np.append(log_upper_bounds, np.nanmax(self.Obs_[:, i]))
-                population = np.zeros((population_size, 1+ self.ntrs))
+                    log_lower_bounds = np.append(log_lower_bounds)#, np.nanmin(self.Obs_[:, i]))
+                    log_upper_bounds = np.append(log_upper_bounds)#, np.nanmax(self.Obs_[:, i]))
+                population = np.zeros((population_size, 1))#+ self.ntrs))
                 for i in range(1 + self.ntrs):
                     population[:,i] = np.random.uniform(log_lower_bounds[i], log_upper_bounds[i], population_size)
                 
@@ -209,7 +214,7 @@ class cal_HansonKraus1991_2(object):
                                          self.phi,
                                          self.bctype,
                                          self.Bcoef,
-                                         self.fomulation,
+                                         self.alst_fomulation,
                                          self.mb,
                                          self.D50)
                 return Ymd[self.idx_obs_splited, :].flatten()
@@ -235,7 +240,7 @@ class cal_HansonKraus1991_2(object):
                                          self.phi,
                                          self.bctype,
                                          self.Bcoef,
-                                         self.fomulation,
+                                         self.alst_fomulation,
                                          self.mb,
                                          self.D50)
                 return Ymd
