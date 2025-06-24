@@ -104,7 +104,7 @@ class cal_HansonKraus1991_2(object):
         self.interp_forcing()
         self.split_data()
 
-        self.yi = np.mean(self.Obs_splited_, axis=0)
+        self.yi = np.nanmean(self.Obs_splited_, axis=0)
         
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time - t)))
         self.idx_obs = mkIdx(self.time_obs)
