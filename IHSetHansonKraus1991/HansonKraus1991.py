@@ -50,6 +50,7 @@ def hansonKraus1991_cerq(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, 
     ysol = np.zeros((mt, n1))
     q    = np.zeros((mt, n2))
     alfas = np.empty(n2, dtype=np.float64)      # reuse buffer for alfas
+    diff_Hb = np.zeros(n2, dtype=np.float64)
 
     ysol[0, :] = yi
 
@@ -68,8 +69,18 @@ def hansonKraus1991_cerq(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi, 
 
         # propagate waves and compute transport
         hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth, alfas, Bcoef)
+
+        for i in range(1, n2-1):
+            # we use centered finite differences to compute the dhb/dx
+            diff_Hb[i] = (hb[i+1] - hb[i-1]) / dx[i-1]
+
+        
+        diff_Hb[0] = (hb[1] - hb[0]) / dx[0]  # forward difference for the first point
+
+        diff_Hb[-1] = (hb[-1] - hb[-2]) / dx[-1]  # backward difference for the last point
+
         # ALST(Hb, Tp, Dirb, hb, bathy_angle, K, D50, mb, formula)
-        q_now, _ = CERQ_ALST(hb, dirb, depthb, alfas, kal)
+        q_now, _ = CERQ_ALST(hb, dirb, depthb, alfas, kal, mb, diff_Hb)
 
         # apply boundary conditions
         if bctype[0] == 0:
@@ -106,6 +117,7 @@ def hansonKraus1991_komar(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi,
     ysol = np.zeros((mt, n1))
     q    = np.zeros((mt, n2))
     alfas = np.empty(n2, dtype=np.float64)      # reuse buffer for alfas
+    diff_Hb = np.zeros(n2, dtype=np.float64)
 
     ysol[0, :] = yi
 
@@ -124,8 +136,18 @@ def hansonKraus1991_komar(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, phi,
 
         # propagate waves and compute transport
         hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth, alfas, Bcoef)
+
+        for i in range(1, n2-1):
+            # we use centered finite differences to compute the dhb/dx
+            diff_Hb[i] = (hb[i+1] - hb[i-1]) / dx[i-1]
+
+        
+        diff_Hb[0] = (hb[1] - hb[0]) / dx[0]  # forward difference for the first point
+
+        diff_Hb[-1] = (hb[-1] - hb[-2]) / dx[-1]  # backward difference for the last point
+        
         # ALST(Hb, Tp, Dirb, hb, bathy_angle, K, D50, mb, formula)
-        q_now, _ = Komar_ALST(hb, dirb, depthb, alfas, kal)
+        q_now, _ = Komar_ALST(hb, dirb, depthb, alfas, kal, mb, diff_Hb)
 
         # apply boundary conditions
         if bctype[0] == 0:
@@ -162,6 +184,7 @@ def hansonKraus1991_kamphuis(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, p
     ysol = np.zeros((mt, n1))
     q    = np.zeros((mt, n2))
     alfas = np.empty(n2, dtype=np.float64)      # reuse buffer for alfas
+    diff_Hb = np.zeros(n2, dtype=np.float64)
 
     ysol[0, :] = yi
 
@@ -180,8 +203,18 @@ def hansonKraus1991_kamphuis(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, p
 
         # propagate waves and compute transport
         hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth, alfas, Bcoef)
+
+        for i in range(1, n2-1):
+            # we use centered finite differences to compute the dhb/dx
+            diff_Hb[i] = (hb[i+1] - hb[i-1]) / dx[i-1]
+
+        
+        diff_Hb[0] = (hb[1] - hb[0]) / dx[0]  # forward difference for the first point
+
+        diff_Hb[-1] = (hb[-1] - hb[-2]) / dx[-1]  # backward difference for the last point
+
         # ALST(Hb, Tp, Dirb, hb, bathy_angle, K, D50, mb, formula)
-        q_now, _ = Kamphuis_ALST(hb, tp[t,:], dirb, depthb, alfas, kal, mb, D50)
+        q_now, _ = Kamphuis_ALST(hb, tp[t,:], dirb, depthb, alfas, kal, mb, D50, diff_Hb)
 
         # apply boundary conditions
         if bctype[0] == 0:
@@ -218,6 +251,7 @@ def hansonKraus1991_vanrijn(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, ph
     ysol = np.zeros((mt, n1))
     q    = np.zeros((mt, n2))
     alfas = np.empty(n2, dtype=np.float64)      # reuse buffer for alfas
+    diff_Hb = np.zeros(n2, dtype=np.float64)
 
     ysol[0, :] = yi
 
@@ -236,8 +270,18 @@ def hansonKraus1991_vanrijn(yi, dt, dx, hs, tp, dir, depth, doc, kal, X0, Y0, ph
 
         # propagate waves and compute transport
         hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dir[t,:], depth, alfas, Bcoef)
+
+        for i in range(1, n2-1):
+            # we use centered finite differences to compute the dhb/dx
+            diff_Hb[i] = (hb[i+1] - hb[i-1]) / dx[i-1]
+
+        
+        diff_Hb[0] = (hb[1] - hb[0]) / dx[0]  # forward difference for the first point
+
+        diff_Hb[-1] = (hb[-1] - hb[-2]) / dx[-1]  # backward difference for the last point
+
         # ALST(Hb, Tp, Dirb, hb, bathy_angle, K, D50, mb, formula)
-        q_now, _ = VanRijn_ALST(hb, dirb, depthb, alfas, kal, mb, D50)
+        q_now, _ = VanRijn_ALST(hb, dirb, depthb, alfas, kal, mb, D50, diff_Hb)
 
         # apply boundary conditions
         if bctype[0] == 0:
