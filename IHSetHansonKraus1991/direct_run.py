@@ -140,7 +140,7 @@ class HansonKraus1991_run(object):
             self.par_names = [r'K']
             self.par_values = par
 
-        self.calculate_metrics()
+        # self.calculate_metrics()
 
     def calculate_metrics(self):
         self.metrics_names = fo.backtot()[0]
