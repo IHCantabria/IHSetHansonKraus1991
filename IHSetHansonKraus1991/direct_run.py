@@ -87,10 +87,9 @@ class HansonKraus1991_run(object):
         self.interp_forcing()
         self.split_data()
         
-        self.yi = np.zeros_like(self.Obs_splited_[0,:])
+        self.yi = np.zeros_like(self.Obs[0,:])
         for i in range(self.ntrs):
-            idx_not_nan = np.where(~np.isnan(self.Obs_splited_[:, i]))[0]
-            self.yi[i] = self.Obs_splited_[idx_not_nan[0], i]
+            self.yi[i] = np.nanmean(self.Obs_splited_[:, i])
 
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time - t)))
         self.idx_obs = mkIdx(self.time_obs)
