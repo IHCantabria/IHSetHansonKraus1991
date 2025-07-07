@@ -114,7 +114,7 @@ class HansonKraus1991_run(object):
                                         self.hs_,
                                         self.tp_,
                                         self.dir_,
-                                        self.depth,
+                                        self.depth_,
                                         self.doc,
                                         K,
                                         self.X0,
@@ -178,6 +178,7 @@ class HansonKraus1991_run(object):
         self.hs_ = np.zeros((len(self.time), self.ntrs+1))
         self.tp_ = np.zeros((len(self.time), self.ntrs+1))
         self.dir_ = np.zeros((len(self.time), self.ntrs+1))
+        self.depth_ = np.zeros((self.ntrs+1))
 
         self.hs_[:, 0], self.hs_[:, -1] = self.hs[:, 0], self.hs[:, -1]
         self.tp_[:, 0], self.tp_[:, -1] = self.tp[:, 0], self.tp[:, -1]
@@ -187,6 +188,8 @@ class HansonKraus1991_run(object):
             self.hs_[i, 1:-1] = np.interp(dist_, dist, self.hs[i, :])
             self.tp_[i, 1:-1] = np.interp(dist_, dist, self.tp[i, :])
             self.dir_[i, 1:-1] = np.interp(dist_, dist, self.dir[i, :])
+
+        self.depth_[1:-1] = np.interp(dist_, dist, self.depth)
 
 
 

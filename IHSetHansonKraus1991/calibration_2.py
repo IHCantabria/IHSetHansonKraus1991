@@ -136,7 +136,7 @@ class cal_HansonKraus1991_2(object):
                                          self.hs_splited,
                                          self.tp_splited,
                                          self.dir_splited,
-                                         self.depth,
+                                         self.depth_,
                                          self.doc,
                                          K,
                                          self.X0,
@@ -160,7 +160,7 @@ class cal_HansonKraus1991_2(object):
                                          self.hs_,
                                          self.tp_,
                                          self.dir_,
-                                         self.depth,
+                                         self.depth_,
                                          self.doc,
                                          K,
                                          self.X0,
@@ -205,7 +205,7 @@ class cal_HansonKraus1991_2(object):
                                          self.hs_splited,
                                          self.tp_splited,
                                          self.dir_splited,
-                                         self.depth,
+                                         self.depth_,
                                          self.doc,
                                          K,
                                          self.X0,
@@ -230,7 +230,7 @@ class cal_HansonKraus1991_2(object):
                                          self.hs_,
                                          self.tp_,
                                          self.dir_,
-                                         self.depth,
+                                         self.depth_,
                                          self.doc,
                                          K,
                                          self.X0,
@@ -320,8 +320,8 @@ class cal_HansonKraus1991_2(object):
         hs(time, trs) -> hs(time, trs+0.5)
         tp(time, trs) -> tp(time, trs+0.5)
         dir(time, trs) -> dir(time, trs+0.5)
-        depth(time, trs) -> depth(time, trs+0.5)
         doc(time, trs) -> doc(time, trs+0.5)
+        depth(trs) -> depth(time, trs+0.5)
         """
 
         dist = np.cumsum(self.dx)
@@ -331,13 +331,17 @@ class cal_HansonKraus1991_2(object):
         self.hs_ = np.zeros((len(self.time), self.ntrs+1))
         self.tp_ = np.zeros((len(self.time), self.ntrs+1))
         self.dir_ = np.zeros((len(self.time), self.ntrs+1))
+        self.depth_ = np.zeros((self.ntrs+1))
 
         self.hs_[:, 0], self.hs_[:, -1] = self.hs[:, 0], self.hs[:, -1]
         self.tp_[:, 0], self.tp_[:, -1] = self.tp[:, 0], self.tp[:, -1]
         self.dir_[:, 0], self.dir_[:, -1] = self.dir[:, 0], self.dir[:, -1]
+        self.depth_[0], self.depth_[-1] = self.depth[0], self.depth[-1]
 
         for i in range(len(self.time)):
             self.hs_[i, 1:-1] = np.interp(dist_, dist, self.hs[i, :])
             self.tp_[i, 1:-1] = np.interp(dist_, dist, self.tp[i, :])
             self.dir_[i, 1:-1] = np.interp(dist_, dist, self.dir[i, :])
+
+        self.depth_[1:-1] = np.interp(dist_, dist, self.depth)
         
