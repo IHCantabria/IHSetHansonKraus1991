@@ -60,6 +60,8 @@ class cal_HansonKraus1991_2(object):
         elif self.formulation == 'Van Rijn (2014)':
             print('Using Van Rijn (2014) formulation')
             from .HansonKraus1991 import hansonKraus1991_vanrijn as hk1991
+            self.mb = cfg['mb']
+            self.D50 = cfg['D50']
         
         if self.breakType == 'Spectral':
             self.Bcoef = 0.45

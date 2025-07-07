@@ -63,6 +63,18 @@ class HansonKraus1991_run(object):
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
 
+        bc_conv = [0,0]
+        if self.bctype[0] == 'Dirichlet':
+            bc_conv[0] = 0
+        elif self.bctype[0] == 'Neumann':
+            bc_conv[0] = 1
+        if self.bctype[1] == 'Dirichlet':
+            bc_conv[1] = 0
+        elif self.bctype[1] == 'Neumann':
+            bc_conv[1] = 1
+        
+        self.bctype = np.array(bc_conv)
+
         self.Y0 = data.yi.values
         self.X0 = data.xi.values
         self.Xf = data.xf.values
