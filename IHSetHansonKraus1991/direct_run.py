@@ -89,7 +89,7 @@ class HansonKraus1991_run(object):
         
         self.yi = np.zeros_like(self.Obs[0,:])
         for i in range(self.ntrs):
-            self.yi[i] = np.nanmean(self.Obs_splited_[:, i])
+            self.yi[i] = np.nanmean(self.Obs[:, i])
 
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time - t)))
         self.idx_obs = mkIdx(self.time_obs)
