@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import fast_optimization as fo
-from IHSetUtils import Hs12Calc, depthOfClosure
+from IHSetUtils import Hs12Calc, depthOfClosure, nauticalDir2cartesianDir
 import json
 
 class HansonKraus1991_run(object):
@@ -48,18 +48,18 @@ class HansonKraus1991_run(object):
 
         if self.formulation == 'CERC (1984)':
             print('Using CERC (1984) formulation')
-            from .HansonKraus1991 import hansonKraus1991_cerq as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_cerq as hk1991
         elif self.formulation == 'Komar (1998)':
             print('Using Komar (1998) formulation')
-            from .HansonKraus1991 import hansonKraus1991_komar as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_komar as hk1991
         elif self.formulation == 'Kamphuis (2002)':
             print('Using Kamphuis (2002) formulation')
-            from .HansonKraus1991 import hansonKraus1991_kamphuis as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_kamphuis as hk1991
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
         elif self.formulation == 'Van Rijn (2014)':
             print('Using Van Rijn (2014) formulation')
-            from .HansonKraus1991 import hansonKraus1991_vanrijn as hansonKraus1991
+            from .HansonKraus1991 import hansonKraus1991_vanrijn as hk1991
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
 
@@ -85,14 +85,13 @@ class HansonKraus1991_run(object):
         self.hs = data.hs.values
         self.tp= data.tp.values
         self.dir = data.dir.values
+        self.dir = nauticalDir2cartesianDir(self.dir)
         self.time = pd.to_datetime(data.time.values)
 
         self.Obs = data.obs.values
         self.time_obs = pd.to_datetime(data.time_obs.values)
 
         self.ntrs = len(self.X0)
-        self.dx = ((self.Y0[1:]- self.Y0[:-1])**2 + (self.X0[1:]- self.X0[:-1])**2)**0.5
-        self.dx = np.hstack((self.dx[0], ((self.Yf[1:]- self.Yf[:-1])**2 + (self.Xf[1:]- self.Xf[:-1])**2)**0.5))
         
         data.close()
 
@@ -107,35 +106,33 @@ class HansonKraus1991_run(object):
         self.idx_obs = mkIdx(self.time_obs)
 
         # Now we calculate the dt from the time variable
-        mkDT = np.vectorize(lambda i: (self.time[i+1] - self.time[i]).total_seconds()/3600)
+        mkDT = np.vectorize(lambda i: (self.time[i+1] - self.time[i]).total_seconds())
         self.dt = mkDT(np.arange(0, len(self.time)-1))
 
         
         self.doc = np.zeros_like(self.hs_)
-        
-        for k in range(self.ntrs):
-            hs12, ts12 = Hs12Calc(self.hs_, self.tp_)
+        for k in range(self.doc.shape[1]):
+            hs12, ts12 = Hs12Calc(self.hs_[:,k], self.tp_[:,k])
             self.doc[:,k] = depthOfClosure(hs12, ts12, self.doc_formula)
-        
-
+                
         def run_model(par):
             K = par
-            Ymd, _ = hansonKraus1991(self.yi,
-                                        self.dt,
-                                        self.dx,
-                                        self.hs_,
-                                        self.tp_,
-                                        self.dir_,
-                                        self.depth_,
-                                        self.doc,
-                                        K,
-                                        self.X0,
-                                        self.Y0,
-                                        self.phi,
-                                        self.bctype,
-                                        self.Bcoef,
-                                        self.mb,
-                                        self.D50)
+            Ymd, _ = hk1991(self.yi,
+                            self.dt,
+                            # self.dx,
+                            self.hs_,
+                            self.tp_,
+                            self.dir_,
+                            self.depth_,
+                            self.doc,
+                            K,
+                            self.X0,
+                            self.Y0,
+                            self.phi,
+                            self.bctype,
+                            self.Bcoef,
+                            self.mb,
+                            self.D50)
             return Ymd
 
         self.run_model = run_model
@@ -179,12 +176,12 @@ class HansonKraus1991_run(object):
         hs(time, trs) -> hs(time, trs+0.5)
         tp(time, trs) -> tp(time, trs+0.5)
         dir(time, trs) -> dir(time, trs+0.5)
-        depth(time, trs) -> depth(time, trs+0.5)
         doc(time, trs) -> doc(time, trs+0.5)
+        depth(trs) -> depth(time, trs+0.5)
         """
 
-        dist = np.cumsum(self.dx)
-        dist_ = dist[1:] - self.dx[1:]/2
+        dist = np.hstack((0,np.cumsum(np.sqrt(np.diff(self.Xf)**2 + np.diff(self.Yf)**2))))
+        dist_ = dist[1:] - (dist[1:]-dist[:-1])/2
 
         
         self.hs_ = np.zeros((len(self.time), self.ntrs+1))
@@ -195,13 +192,31 @@ class HansonKraus1991_run(object):
         self.hs_[:, 0], self.hs_[:, -1] = self.hs[:, 0], self.hs[:, -1]
         self.tp_[:, 0], self.tp_[:, -1] = self.tp[:, 0], self.tp[:, -1]
         self.dir_[:, 0], self.dir_[:, -1] = self.dir[:, 0], self.dir[:, -1]
+        self.depth_[0], self.depth_[-1] = self.depth[0], self.depth[-1]
+
+        # self.hs_[:, 1], self.hs_[:, -2] = self.hs[:, 0], self.hs[:, -1]
+        # self.tp_[:, 1], self.tp_[:, -2] = self.tp[:, 0], self.tp[:, -1]
+        # self.dir_[:, 1], self.dir_[:, -2] = self.dir[:, 0], self.dir[:, -1]
+        # self.depth_[1], self.depth_[-2] = self.depth[0], self.depth[-1]
 
         for i in range(len(self.time)):
+            # self.hs_[i, 2:-2] = np.interp(dist_, dist, self.hs[i, :])
+            # self.tp_[i, 2:-2] = np.interp(dist_, dist, self.tp[i, :])
+            # self.dir_[i, 2:-2] = np.interp(dist_, dist, self.dir[i, :])
             self.hs_[i, 1:-1] = np.interp(dist_, dist, self.hs[i, :])
             self.tp_[i, 1:-1] = np.interp(dist_, dist, self.tp[i, :])
             self.dir_[i, 1:-1] = np.interp(dist_, dist, self.dir[i, :])
 
+
+        # self.depth_[2:-2] = np.interp(dist_, dist, self.depth)
         self.depth_[1:-1] = np.interp(dist_, dist, self.depth)
+
+
+        # self.hs_ = self.hs
+        # self.tp_ = self.tp
+        # self.dir_ = self.dir
+        # self.depth_ = self.depth
+        
 
 
 
