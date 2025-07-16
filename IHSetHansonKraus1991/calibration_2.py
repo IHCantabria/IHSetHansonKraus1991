@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 import fast_optimization as fo
 from IHSetUtils import Hs12Calc, depthOfClosure, nauticalDir2cartesianDir
+from .HansonKraus1991 import hansonKraus1991 as hk1991
 import pandas as pd
 import json
 
@@ -48,21 +49,21 @@ class cal_HansonKraus1991_2(object):
 
         if self.formulation == 'CERC (1984)':
             print('Using CERC (1984) formulation')
-            from .HansonKraus1991 import hansonKraus1991_cerq as hk1991
+            from IHSetUtils.libjit.morfology import CERC_ALST as lst_f
             self.is_exp = True
         elif self.formulation == 'Komar (1998)':
             print('Using Komar (1998) formulation')
-            from .HansonKraus1991 import hansonKraus1991_komar as hk1991
+            from IHSetUtils.libjit.morfology import Komar_ALST as lst_f
             self.is_exp = True
         elif self.formulation == 'Kamphuis (2002)':
             print('Using Kamphuis (2002) formulation')
-            from .HansonKraus1991 import hansonKraus1991_kamphuis as hk1991
+            from IHSetUtils.libjit.morfology import Kamphuis_ALST as lst_f
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
             self.is_exp = False
         elif self.formulation == 'Van Rijn (2014)':
             print('Using Van Rijn (2014) formulation')
-            from .HansonKraus1991 import hansonKraus1991_vanrijn as hk1991
+            from IHSetUtils.libjit.morfology import VanRijn_ALST as lst_f
             self.mb = cfg['mb']
             self.D50 = cfg['D50']
             self.is_exp = False
@@ -137,7 +138,6 @@ class cal_HansonKraus1991_2(object):
                     K = par
                 Ymd, _ = hk1991(self.yi, #y_ini,      #
                                 self.dt,
-                                # self.dx,
                                 self.hs_splited,
                                 self.tp_splited,
                                 self.dir_splited,
@@ -150,7 +150,8 @@ class cal_HansonKraus1991_2(object):
                                 self.bctype,
                                 self.Bcoef,
                                 self.mb,
-                                self.D50)
+                                self.D50,
+                                lst_f)
                 
                 return Ymd[self.idx_obs_splited, :].flatten()
 
@@ -160,7 +161,6 @@ class cal_HansonKraus1991_2(object):
                 K = par
                 Ymd, _ = hk1991(self.yi, #y_ini,        #
                                 self.dt,
-                            #  self.dx,
                                 self.hs_,
                                 self.tp_,
                                 self.dir_,
@@ -173,7 +173,8 @@ class cal_HansonKraus1991_2(object):
                                 self.bctype,
                                 self.Bcoef,
                                 self.mb,
-                                self.D50)
+                                self.D50,
+                                lst_f)
                 return Ymd
 
             self.run_model = run_model
@@ -211,21 +212,21 @@ class cal_HansonKraus1991_2(object):
                         K.append(par[i])
                 K = np.array(K)
                 Ymd, _ = hk1991(self.yi,
-                                         self.dt,
-                                        #  self.dx,
-                                         self.hs_splited,
-                                         self.tp_splited,
-                                         self.dir_splited,
-                                         self.depth_,
-                                         self.doc,
-                                         K,
-                                         self.X0,
-                                         self.Y0,
-                                         self.phi,
-                                         self.bctype,
-                                         self.Bcoef,
-                                         self.mb,
-                                         self.D50)
+                                self.dt,
+                                self.hs_splited,
+                                self.tp_splited,
+                                self.dir_splited,
+                                self.depth_,
+                                self.doc,
+                                K,
+                                self.X0,
+                                self.Y0,
+                                self.phi,
+                                self.bctype,
+                                self.Bcoef,
+                                self.mb,
+                                self.D50,
+                                lst_f)
                 return Ymd[self.idx_obs_splited, :].flatten()
 
             self.model_sim = model_simulation
@@ -236,21 +237,21 @@ class cal_HansonKraus1991_2(object):
                     K.append(par[i])
                 K = np.array(K)
                 Ymd, _ = hk1991(self.yi,
-                                         self.dt,
-                                        #  self.dx,
-                                         self.hs_,
-                                         self.tp_,
-                                         self.dir_,
-                                         self.depth_,
-                                         self.doc,
-                                         K,
-                                         self.X0,
-                                         self.Y0,
-                                         self.phi,
-                                         self.bctype,
-                                         self.Bcoef,
-                                         self.mb,
-                                         self.D50)
+                                self.dt, 
+                                self.hs_,
+                                self.tp_,
+                                self.dir_,
+                                self.depth_,
+                                self.doc,
+                                K,
+                                self.X0,
+                                self.Y0,
+                                self.phi,
+                                self.bctype,
+                                self.Bcoef,
+                                self.mb,
+                                self.D50,
+                                lst_f)
                 return Ymd
 
             self.run_model = run_model
