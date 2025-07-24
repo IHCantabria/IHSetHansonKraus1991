@@ -108,7 +108,7 @@ def hansonKraus1991(yi, dt,  hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype,
         phi_rad[i] = phi[i] * np.pi / 180.0
     
     for t in range(1, mt):
-
+        dt_now = dt[t-1] * 3600  # convert dt from hours to seconds
         # compute alfas once per time step
         XN, YN  = abs_pos(X0, Y0, phi_rad, ysol[t-1,:])
         normals = _compute_normals(XN, YN, phi)
@@ -137,14 +137,14 @@ def hansonKraus1991(yi, dt,  hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype,
         # diffusion midpoints
         dc = 0.5 * (doc[t, 1:] + doc[t, :-1])
 
-        inv_i = dt[t-1] / dc[0]  # inverse of dc[1] for first element
+        inv_i = dt_now / dc[0]  # inverse of dc[1] for first element
         ynew[0] = ysol[t-1, 0] - inv_i * (q_now[1] - q_now[0]) / dx[0]
 
-        inv_i = dt[t-1] / dc[-1]  # inverse of dc[-1] for last element
+        inv_i = dt_now / dc[-1]  # inverse of dc[-1] for last element
         ynew[-1] = ysol[t-1, -1] - inv_i * (q_now[-1] - q_now[-2]) / dx[-1]
 
         for i in range(1,n2-2):
-            inv_i   = dt[t-1] / dc[i]  # inverse of dx[i+1] for current element
+            inv_i   = dt_now / dc[i]  # inverse of dx[i+1] for current element
             ynew[i] = ysol[t-1,i] - inv_i * (q_now[i+1] - q_now[i]) / dx[i-1]
 
         ysol[t,:]  = ynew
