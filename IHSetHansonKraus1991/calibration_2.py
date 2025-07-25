@@ -27,9 +27,9 @@ class cal_HansonKraus1991_2(CoastlineModel):
 
     def setup_forcing(self):
         self.switch_Kal = self.cfg['switch_Kal']
-        self.yi = np.zeros_like(self.Obs_splited_[0,:])
+        self.y_ini = np.zeros_like(self.Obs_splited_[0,:])
         for i in range(self.ntrs):
-            self.yi[i] = np.nanmean(self.Obs_splited_[:, i])
+            self.y_ini[i] = np.nanmean(self.Obs_splited_[:, i])
     
     def init_par(self, population_size: int):
         if self.switch_Kal == 0:
@@ -48,11 +48,12 @@ class cal_HansonKraus1991_2(CoastlineModel):
                 lowers = np.array(self.lb)
                 uppers = np.array(self.ub)
             pop = np.zeros((population_size, self.ntrs))
-        for i in range(len(lowers)):
-            pop[:, i] = np.random.uniform(lowers[i], uppers[i], population_size)
+        for i in range(pop.shape[1]):
+            pop[:, i] = np.random.uniform(lowers, uppers, population_size)
         return pop, lowers, uppers
 
     def model_sim(self, par: np.ndarray) -> np.ndarray:
+
         if self.switch_Kal == 0:
             if self.is_exp:
                 K = np.exp(par)
@@ -67,16 +68,16 @@ class cal_HansonKraus1991_2(CoastlineModel):
                     K.append(par[i])
             K = np.array(K)
 
-        Ymd, _ = hk1991(self.yi,
+        Ymd, _ = hk1991(self.y_ini,
                         self.dt,
                         self.hs_s,
                         self.tp_s,
                         self.dir_s,
-                        self.depth_,
+                        self.depth,
                         self.doc,
                         K,
-                        self.xi,
-                        self.yi,
+                        self.X0,
+                        self.Y0,
                         self.phi,
                         self.bctype,
                         self.Bcoef,
@@ -89,12 +90,12 @@ class cal_HansonKraus1991_2(CoastlineModel):
 
     def run_model(self, par: np.ndarray) -> np.ndarray:
         K = par
-        Ymd, _ = hk1991(self.yi, #y_ini,        #
+        Ymd, _ = hk1991(self.y_ini, #y_ini,        #
                         self.dt,
-                        self.hs_,
-                        self.tp_,
-                        self.dir_,
-                        self.depth_,
+                        self.hs,
+                        self.tp,
+                        self.dir,
+                        self.depth,
                         self.doc,
                         K,
                         self.X0,
@@ -113,6 +114,6 @@ class cal_HansonKraus1991_2(CoastlineModel):
         elif self.switch_Kal == 1:
             self.par_names = []
             for i in range(len(self.solution)):
-                self.par_names.append(rf'K_trs_{i}')
+                self.par_names.append(rf'K_trs_{i+1}')
         if self.is_exp:
-            self.par_values = np.exp(self.solution)
+            self.par_values = np.exp(self.par_values)
