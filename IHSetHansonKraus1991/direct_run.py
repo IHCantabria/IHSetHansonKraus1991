@@ -277,5 +277,5 @@ class HansonKraus1991_run(CoastlineModel):
             self.par_names = ['K']
         elif self.switch_Kal == 1:
             self.par_names = []
-            for i in range(len(self.solution)):
+            for i in range(len(self.par_values)):
                 self.par_names.append(rf'K_trs_{i+1}')
