@@ -122,7 +122,9 @@ def hansonKraus1991(yi, dt,  hs, tp, dire, depth, doc, kal, X0, Y0, phi, bctype,
         # propagate waves and compute transport
         hb, dirb, depthb = BreakingPropagation(hs[t,:], tp[t,:], dire[t,:], depth, alfas, Bcoef)
         # (Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50)
-        q_now, _ = lstf(hb, tp[t,:], dirb, depthb, alfas, kal, mb, D50)
+        dhbdx = np.zeros_like(hb)
+        dhbdx[1:-1] = np.diff(0.5*(hb[:-1] + hb[1:])) / dx
+        q_now, _ = lstf(hb, tp[t,:], dirb, depthb, alfas, kal, mb, D50, dhbdx)
 
         # apply boundary conditions
         if bctype[0]  == 0:

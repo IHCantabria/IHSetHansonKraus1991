@@ -47,7 +47,7 @@ class cal_HansonKraus1991_2(CoastlineModel):
             else:
                 lowers = np.array(self.lb)
                 uppers = np.array(self.ub)
-            pop = np.zeros((population_size, self.ntrs))
+            pop = np.zeros((population_size, self.ntrs+1))
         for i in range(pop.shape[1]):
             pop[:, i] = np.random.uniform(lowers, uppers, population_size)
         return pop, lowers, uppers
